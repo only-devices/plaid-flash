@@ -1,166 +1,249 @@
 # Plaid Flash
 
-A lightweight web application for connecting bank accounts using Plaid Link in sandbox mode. Built with Vite + React frontend and Express.js backend.
+A lightweight Next.js application for connecting bank accounts using Plaid Link in sandbox mode. Built with Next.js 14 App Router, TypeScript, and the edge-compatible `plaid-fetch` library.
 
-## Features
+## ✨ Features
 
 - 🚀 Quick Plaid Link integration with sandbox mode
 - 🎨 Smooth modal animations and modern UI
 - 📊 Pretty-printed JSON display of account data
-- ⚡ Fast development setup with Vite
+- ⚡ Edge Runtime compatible with Vercel
 - 🔒 Secure token exchange flow
+- 📱 Responsive design for mobile and desktop
+- 🎓 Educational tool showing Plaid Link callbacks in real-time
 
-## Prerequisites
+## 🎬 Flow
 
-- Node.js (v18 or higher recommended)
-- npm or yarn
+1. Welcome animation fades in
+2. "Let's Go" button appears
+3. Click button → Plaid Link opens
+4. **Link succeeds**: Shows `onSuccess` callback data → Click "Don't stop me now" → Exchange token → Display account data
+5. **Link exits**: Shows `onExit` callback data → Click "Womp, womp. Try again?"
+
+## 📋 Prerequisites
+
+- Node.js 18+ or higher
+- npm or pnpm
 - Plaid account with API credentials ([Get started here](https://dashboard.plaid.com/signup))
 
-## Setup
+## 🚀 Quick Start
 
 ### 1. Get Plaid Credentials
 
 1. Sign up for a free Plaid account at https://dashboard.plaid.com/signup
-2. Get your `client_id` and `secret` (sandbox) from the dashboard
+2. Navigate to Team Settings → Keys
+3. Copy your:
+   - Client ID
+   - Sandbox secret key
 
-### 2. Configure Environment Variables
+### 2. Clone and Install
 
-Create a `.env` file in the root directory (`/Users/etuovila/Documents/plaid-flash/.env`):
+```bash
+cd /Users/etuovila/Documents/plaid-flash
+npm install
+```
+
+### 3. Configure Environment Variables
+
+Create a `.env.local` file in the root directory:
 
 ```env
 PLAID_CLIENT_ID=your_client_id_here
 PLAID_SECRET=your_sandbox_secret_here
 PLAID_ENV=sandbox
-PORT=3001
 ```
 
-**Important:** Replace `your_client_id_here` and `your_sandbox_secret_here` with your actual Plaid credentials.
-
-### 3. Install Dependencies
-
-From the root directory:
+### 4. Run Locally
 
 ```bash
-# Option 1: Install all dependencies at once
-npm run install:all
-
-# Option 2: Install separately
-cd server && npm install
-cd ../client && npm install
-```
-
-### 4. Run the Application
-
-You'll need two terminal windows:
-
-**Terminal 1 - Start the backend server:**
-```bash
-cd server
 npm run dev
 ```
-The server will run on `http://localhost:3001`
 
-**Terminal 2 - Start the frontend client:**
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+### 5. Test It Out
+
+1. Click "Let's Go"
+2. Use Plaid's sandbox credentials:
+   - **Username:** `user_good`
+   - **Password:** `pass_good`
+3. Select any bank (like "First Platypus Bank")
+4. Complete the flow and see callback data + account data!
+
+## 🌐 Deploy to Vercel
+
+### Option 1: Deploy via Vercel CLI
+
 ```bash
-cd client
-npm run dev
+# Install Vercel CLI
+npm i -g vercel
+
+# Deploy
+vercel
 ```
-The client will run on `http://localhost:5173`
 
-### 5. Use the Application
+### Option 2: Deploy via GitHub
 
-1. Open your browser to `http://localhost:5173`
-2. Click the "Let's Go" button
-3. Use Plaid's sandbox credentials to test:
-   - Username: `user_good`
-   - Password: `pass_good`
-4. Select any bank and complete the flow
-5. View the account data in the modal
-6. Click "Start Over" to reset
+1. Push your code to GitHub
+2. Go to [vercel.com](https://vercel.com)
+3. Click "New Project"
+4. Import your GitHub repository
+5. Add environment variables:
+   - `PLAID_CLIENT_ID`
+   - `PLAID_SECRET`
+   - `PLAID_ENV` (set to `sandbox`)
+6. Click "Deploy"
 
-## Project Structure
+Your app will be live at `https://your-project.vercel.app`
+
+### Environment Variables in Vercel
+
+After deployment, add these in your Vercel project settings:
+
+1. Go to your project dashboard
+2. Click "Settings" → "Environment Variables"
+3. Add:
+   - `PLAID_CLIENT_ID` = your Plaid client ID
+   - `PLAID_SECRET` = your Plaid sandbox secret
+   - `PLAID_ENV` = `sandbox`
+
+## 📁 Project Structure
 
 ```
 plaid-flash/
-├── .env                    # Environment variables (create this)
-├── .env.example            # Example env file
-├── package.json            # Root package with convenience scripts
-├── README.md               # This file
-├── client/                 # React frontend (Vite)
-│   ├── src/
-│   │   ├── App.jsx         # Main application component
-│   │   ├── App.css         # Styles and animations
-│   │   ├── main.jsx        # React entry point
-│   │   ├── components/
-│   │   │   ├── LinkButton.jsx  # Pill-shaped launch button
-│   │   │   └── Modal.jsx       # Animated modal component
-│   │   └── hooks/
-│   │       └── usePlaidLink.js # Plaid Link hook
-│   ├── index.html
-│   ├── vite.config.js
-│   └── package.json
-└── server/                 # Express backend
-    ├── index.js            # Server with Plaid API endpoints
-    └── package.json
+├── app/
+│   ├── layout.tsx              # Root layout
+│   ├── page.tsx                # Main page (client component)
+│   ├── globals.css             # Global styles
+│   └── api/
+│       ├── create-link-token/
+│       │   └── route.ts        # POST /api/create-link-token
+│       ├── exchange-public-token/
+│       │   └── route.ts        # POST /api/exchange-public-token
+│       └── auth-get/
+│           └── route.ts        # POST /api/auth-get
+├── components/
+│   ├── LinkButton.tsx          # Pill-shaped launch button
+│   └── Modal.tsx               # Animated modal component
+├── .env.local                  # Environment variables (create this)
+├── .env.local.example          # Example env file
+├── next.config.js              # Next.js configuration
+├── package.json                # Dependencies
+├── tsconfig.json               # TypeScript configuration
+└── vercel.json                 # Vercel deployment config
 ```
 
-## API Endpoints
+## 🔌 API Routes
 
-The Express server provides three endpoints:
+The app provides three Next.js API routes:
 
-- `POST /api/create_link_token` - Creates a Plaid Link token
-- `POST /api/exchange_public_token` - Exchanges public token for access token
-- `POST /api/auth/get` - Retrieves account authentication data
+### `POST /api/create-link-token`
+Creates a Plaid Link token with predefined configuration.
 
-## Flow
+### `POST /api/exchange-public-token`
+Exchanges public token for access token.
 
-1. Frontend fetches a `link_token` from the backend
-2. User clicks "Let's Go" button → Plaid Link modal opens
-3. User authenticates with a bank (using sandbox credentials)
-4. On success, `public_token` is sent to backend
-5. Backend exchanges `public_token` for `access_token`
-6. Backend calls `/auth/get` with `access_token`
-7. Account data is displayed in an animated modal
-8. User can click "Start Over" to reset the flow
+**Body:** `{ "public_token": "public-sandbox-..." }`
 
-## Technologies Used
+### `POST /api/auth-get`
+Retrieves account authentication data.
+
+**Body:** `{ "access_token": "access-sandbox-..." }`
+
+## 🛠 Technologies
 
 ### Frontend
-- **Vite** - Fast build tool and dev server
-- **React** - UI library
+- **Next.js 14** - React framework with App Router
+- **TypeScript** - Type safety
 - **react-plaid-link** - Official Plaid Link React hook
 - **CSS3** - Animations and styling
 
 ### Backend
-- **Express.js** - Web server framework
-- **Plaid Node SDK** - Official Plaid API client
-- **dotenv** - Environment variable management
-- **cors** - Cross-origin resource sharing
+- **Next.js API Routes** - Serverless API endpoints
+- **plaid-fetch** - Edge-compatible Plaid API client ([heysanil/plaid-fetch](https://github.com/heysanil/plaid-fetch))
 
-## Troubleshooting
+## 🎓 Educational Purpose
 
-### "Failed to initialize" error
-- Make sure your `.env` file exists in the root directory
-- Verify your Plaid credentials are correct
-- Ensure the server is running on port 3001
+Plaid Flash visualizes the Plaid Link integration flow:
 
-### CORS errors
-- Check that the server is running
-- Verify the proxy configuration in `client/vite.config.js`
+1. **Link Token Creation**: See how link tokens are generated server-side
+2. **Plaid Link Modal**: Experience the actual Link flow
+3. **Callback Inspection**: View `onSuccess` and `onExit` callback data before processing
+4. **Token Exchange**: Understand the public → access token flow
+5. **API Response**: Inspect the `/auth/get` response data
 
-### Link modal doesn't open
-- Clear your browser cache
-- Check the browser console for errors
-- Ensure you're using the correct Plaid environment (sandbox)
+Perfect for learning, demoing, or debugging Plaid integrations!
 
-## Development Notes
+## 🧪 Sandbox Test Credentials
+
+Plaid provides various test users for different scenarios:
+
+| Username | Password | Description |
+|----------|----------|-------------|
+| `user_good` | `pass_good` | Successfully link account |
+| `user_custom` | `pass_good` | Require MFA |
+| `user_locked` | `pass_good` | Account locked error |
+
+For more test credentials, visit: https://plaid.com/docs/sandbox/test-credentials/
+
+## 🔧 Development Notes
 
 - The app uses Plaid's **sandbox environment** for testing
-- No database is required - tokens are handled in-memory
+- No database required - tokens are handled in-memory per session
 - The `access_token` is not persisted (intentional for demo purposes)
 - For production use, implement proper token storage and security measures
 
-## License
+## 🚨 Important: plaid-fetch vs Official SDK
+
+This app uses [`plaid-fetch`](https://github.com/heysanil/plaid-fetch) instead of Plaid's official Node SDK because:
+
+1. **Edge Runtime Compatible** - Works in Vercel Edge Functions
+2. **Smaller Bundle** - Uses `fetch` instead of Axios
+3. **Response Format** - Returns data directly (no `.data` property)
+
+**Key Difference:**
+```typescript
+// Official SDK
+const response = await plaidClient.linkTokenCreate({...});
+const linkToken = response.data.link_token;
+
+// plaid-fetch
+const response = await plaid.linkTokenCreate({...});
+const linkToken = response.link_token; // No .data property
+```
+
+## 📝 Migration from v1.0 (Vite + Express)
+
+This is v2.0, migrated from separate Vite frontend and Express backend to a unified Next.js application. Benefits:
+
+✅ Single codebase
+✅ One-command deployment to Vercel
+✅ TypeScript throughout
+✅ Edge Runtime support
+✅ Better performance
+
+## 🐛 Troubleshooting
+
+### "Failed to initialize" error
+- Ensure `.env.local` exists in the root directory
+- Verify Plaid credentials are correct
+- Check that PLAID_ENV is set to 'sandbox'
+
+### TypeScript errors
+- Run `npm install` to ensure all dependencies are installed
+- Delete `.next` folder and restart dev server
+
+### Module not found errors
+- Ensure you're using the correct import paths (`@/components/...`)
+- Check `tsconfig.json` has the correct path mappings
+
+## 📜 License
 
 MIT
 
+## 🙋 Questions?
+
+Check out:
+- [Plaid Documentation](https://plaid.com/docs/)
+- [Next.js Documentation](https://nextjs.org/docs)
+- [plaid-fetch GitHub](https://github.com/heysanil/plaid-fetch)

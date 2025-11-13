@@ -1,15 +1,27 @@
 {
   "name": "plaid-flash",
-  "version": "1.0.0",
-  "description": "A lightweight web application for connecting bank accounts using Plaid Link",
+  "version": "2.0.0",
+  "description": "A lightweight Next.js application for connecting bank accounts using Plaid Link",
   "scripts": {
-    "install:all": "cd server && npm install && cd ../client && npm install",
-    "dev:server": "cd server && npm run dev",
-    "dev:client": "cd client && npm run dev",
-    "dev": "echo 'Run dev:server and dev:client in separate terminals'"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
   },
-  "keywords": ["plaid", "banking", "fintech"],
+  "dependencies": {
+    "next": "^14.2.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-plaid-link": "^3.5.2",
+    "plaid-fetch": "^1.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "typescript": "^5.0.0"
+  },
+  "keywords": ["plaid", "banking", "fintech", "nextjs"],
   "author": "",
   "license": "MIT"
 }
-

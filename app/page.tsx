@@ -1,17 +1,18 @@
+'use client';
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { usePlaidLink } from 'react-plaid-link';
-import LinkButton from './components/LinkButton';
-import Modal from './components/Modal';
-import './App.css';
+import LinkButton from '@/components/LinkButton';
+import Modal from '@/components/Modal';
 
-function App() {
-  const [linkToken, setLinkToken] = useState(null);
+export default function Home() {
+  const [linkToken, setLinkToken] = useState<string | null>(null);
   const [showButton, setShowButton] = useState(false);
   const [showWelcome, setShowWelcome] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [modalState, setModalState] = useState('loading'); // 'loading', 'callback-success', 'callback-exit', 'processing', 'success', 'error'
-  const [accountData, setAccountData] = useState(null);
-  const [callbackData, setCallbackData] = useState(null);
+  const [modalState, setModalState] = useState<'loading' | 'callback-success' | 'callback-exit' | 'processing' | 'success' | 'error'>('loading');
+  const [accountData, setAccountData] = useState<any>(null);
+  const [callbackData, setCallbackData] = useState<any>(null);
   const [errorMessage, setErrorMessage] = useState('');
 
   // Fetch link token on mount
@@ -21,6 +22,13 @@ function App() {
 
   // Welcome animation sequence
   useEffect(() => {
+    // Only run if showWelcome is true (on natural page load)
+    if (!showWelcome) {
+      // If welcome is already false, show button immediately
+      setShowButton(true);
+      return;
+    }
+
     // Remove welcome text after animation completes (5 seconds)
     const welcomeTimer = setTimeout(() => {
       setShowWelcome(false);
@@ -35,11 +43,11 @@ function App() {
       clearTimeout(welcomeTimer);
       clearTimeout(buttonTimer);
     };
-  }, []);
+  }, [showWelcome]);
 
   const fetchLinkToken = async () => {
     try {
-      const response = await fetch('/api/create_link_token', {
+      const response = await fetch('/api/create-link-token', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -49,13 +57,21 @@ function App() {
       setLinkToken(data.link_token);
     } catch (error) {
       console.error('Error fetching link token:', error);
-      setErrorMessage('Failed to initialize. Please refresh the page.');
+      setErrorMessage('Failed to initialize. Please try again.');
       setModalState('error');
       setShowModal(true);
+      setShowWelcome(false);
+      
+      // Reset after a delay
+      setTimeout(() => {
+        setShowModal(false);
+        setModalState('loading');
+        fetchLinkToken();
+      }, 3000);
     }
   };
 
-  const onSuccess = useCallback((public_token, metadata) => {
+  const onSuccess = useCallback((public_token: string, metadata: any) => {
     // Hide the button
     setShowButton(false);
     
@@ -76,7 +92,7 @@ function App() {
       const { public_token } = callbackData;
 
       // Exchange public token for access token
-      const exchangeResponse = await fetch('/api/exchange_public_token', {
+      const exchangeResponse = await fetch('/api/exchange-public-token', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -91,7 +107,7 @@ function App() {
       const { access_token } = await exchangeResponse.json();
 
       // Get auth data
-      const authResponse = await fetch('/api/auth/get', {
+      const authResponse = await fetch('/api/auth-get', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -113,15 +129,20 @@ function App() {
       setErrorMessage('We encountered an issue connecting your account. Please try again.');
       setModalState('error');
       
-      // Clear link token and reload after a delay
+      // Reset after a delay
       setTimeout(() => {
-        setLinkToken(null);
-        window.location.reload();
+        setShowModal(false);
+        setCallbackData(null);
+        setAccountData(null);
+        setModalState('loading');
+        setShowButton(true);
+        setShowWelcome(false);
+        fetchLinkToken();
       }, 3000);
     }
   };
 
-  const onExit = useCallback((err, metadata) => {
+  const onExit = useCallback((err: any, metadata: any) => {
     // Show callback data modal for exit
     setShowButton(false);
     setShowModal(true);
@@ -133,11 +154,14 @@ function App() {
   }, []);
 
   const handleExitRetry = () => {
-    // Reset to start screen
+    // Reset to start screen without reloading
     setShowModal(false);
     setCallbackData(null);
     setModalState('loading');
     setShowButton(true);
+    setShowWelcome(false);
+    // Refetch link token
+    fetchLinkToken();
   };
 
   const config = {
@@ -156,12 +180,15 @@ function App() {
   };
 
   const handleStartOver = () => {
+    // Reset to start screen without reloading
     setShowModal(false);
     setAccountData(null);
+    setCallbackData(null);
     setModalState('loading');
     setShowButton(true);
-    setLinkToken(null);
-    window.location.reload();
+    setShowWelcome(false);
+    // Refetch link token
+    fetchLinkToken();
   };
 
   const handleCopyResponse = async () => {
@@ -215,7 +242,7 @@ function App() {
             <h2>onSuccess Callback Fired!</h2>
           </div>
           <p className="callback-description">
-            Here's the data returned from Plaid Link:
+            Here&apos;s the data returned from Plaid Link:
           </p>
           <div className="account-data">
             <pre className="code-block">
@@ -271,7 +298,7 @@ function App() {
         <div className="modal-error">
           <div className="error-icon">⚠️</div>
           <p>{errorMessage}</p>
-          <p className="error-subtext">Refreshing...</p>
+          <p className="error-subtext">Restarting...</p>
         </div>
       );
     }
@@ -318,6 +345,4 @@ function App() {
     </div>
   );
 }
-
-export default App;
 

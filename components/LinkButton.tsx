@@ -1,6 +1,11 @@
 import React from 'react';
 
-const LinkButton = ({ onClick, isVisible }) => {
+interface LinkButtonProps {
+  onClick: () => void;
+  isVisible: boolean;
+}
+
+const LinkButton: React.FC<LinkButtonProps> = ({ onClick, isVisible }) => {
   return (
     <button 
       className={`link-button ${isVisible ? 'visible' : 'hidden'}`}
