@@ -1,0 +1,15 @@
+{
+  "name": "plaid-flash",
+  "version": "1.0.0",
+  "description": "A lightweight web application for connecting bank accounts using Plaid Link",
+  "scripts": {
+    "install:all": "cd server && npm install && cd ../client && npm install",
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm run dev",
+    "dev": "echo 'Run dev:server and dev:client in separate terminals'"
+  },
+  "keywords": ["plaid", "banking", "fintech"],
+  "author": "",
+  "license": "MIT"
+}
+
