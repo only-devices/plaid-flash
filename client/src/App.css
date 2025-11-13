@@ -22,6 +22,36 @@ body {
   overflow: hidden;
 }
 
+/* Welcome Animation */
+.welcome-text {
+  font-size: 28px;
+  font-weight: 600;
+  color: #ffffff;
+  text-align: center;
+  position: absolute;
+  animation: welcomeFade 5s ease-in-out forwards;
+  pointer-events: none;
+}
+
+@keyframes welcomeFade {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  16% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
 /* Link Button Styles */
 .link-button {
   padding: 18px 48px;
@@ -30,7 +60,7 @@ body {
   color: #ffffff;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border: none;
-  border-radius: 50px;
+  border-radius: 16px;
   cursor: pointer;
   box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -43,7 +73,7 @@ body {
 .link-button.visible {
   opacity: 1;
   transform: scale(1);
-  animation: buttonFadeIn 0.5s ease-out forwards;
+  animation: buttonFadeIn 1.2s ease-out forwards;
 }
 
 .link-button.hidden {
@@ -104,6 +134,52 @@ body {
   position: relative;
 }
 
+/* Callback State */
+.modal-callback {
+  color: #ffffff;
+}
+
+.callback-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+  animation: slideDown 0.5s ease-out;
+}
+
+.callback-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: bold;
+  margin-right: 16px;
+  animation: successPop 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.callback-icon.success-callback {
+  background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+}
+
+.callback-icon.exit-callback {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
+.callback-header h2 {
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.callback-description {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 20px;
+  animation: fadeIn 0.6s ease-out 0.2s backwards;
+}
+
 /* Loading State */
 .modal-loading {
   display: flex;
@@ -118,6 +194,7 @@ body {
   margin-top: 24px;
   font-size: 18px;
   color: rgba(255, 255, 255, 0.8);
+  text-align: center;
 }
 
 .spinner {
@@ -291,6 +368,87 @@ body {
   background: rgba(102, 126, 234, 0.7);
 }
 
+/* Copy Callback Button */
+.copy-callback-button {
+  width: 100%;
+  padding: 16px 32px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffffff;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-top: 24px;
+  animation: fadeIn 0.8s ease-out 0.4s backwards;
+}
+
+.copy-callback-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+}
+
+.copy-callback-button:active {
+  transform: translateY(0);
+}
+
+.copy-callback-button.copied {
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+}
+
+/* Proceed Button (Don't stop me now) */
+.proceed-button {
+  width: 100%;
+  padding: 18px 32px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-top: 12px;
+  animation: fadeIn 0.8s ease-out 0.4s backwards;
+  box-shadow: 0 4px 20px rgba(74, 222, 128, 0.3);
+}
+
+.proceed-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(74, 222, 128, 0.5);
+}
+
+.proceed-button:active {
+  transform: translateY(0);
+}
+
+/* Retry Button (Womp womp) */
+.retry-button {
+  width: 100%;
+  padding: 18px 32px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-top: 12px;
+  animation: fadeIn 0.8s ease-out 0.4s backwards;
+  box-shadow: 0 4px 20px rgba(245, 158, 11, 0.3);
+}
+
+.retry-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(245, 158, 11, 0.5);
+}
+
+.retry-button:active {
+  transform: translateY(0);
+}
+
 /* Copy Response Button */
 .copy-response-button {
   width: 100%;
@@ -352,12 +510,13 @@ body {
     max-width: none;
   }
   
-  .modal-visible {
-    transform: translateY(-50%) translateX(-20px);
-  }
-  
   .modal-content {
     padding: 24px;
+  }
+  
+  .welcome-text {
+    font-size: 22px;
+    padding: 0 20px;
   }
   
   .link-button {
@@ -365,7 +524,8 @@ body {
     font-size: 16px;
   }
   
-  .success-header h2 {
+  .success-header h2,
+  .callback-header h2 {
     font-size: 20px;
   }
   
@@ -375,6 +535,12 @@ body {
   
   .code-block code {
     font-size: 11px;
+  }
+  
+  .proceed-button,
+  .retry-button {
+    font-size: 16px;
+    padding: 16px 28px;
   }
 }
 

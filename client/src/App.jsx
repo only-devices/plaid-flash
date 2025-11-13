@@ -6,15 +6,35 @@ import './App.css';
 
 function App() {
   const [linkToken, setLinkToken] = useState(null);
-  const [showButton, setShowButton] = useState(true);
+  const [showButton, setShowButton] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [modalState, setModalState] = useState('loading'); // 'loading', 'success', 'error'
+  const [modalState, setModalState] = useState('loading'); // 'loading', 'callback-success', 'callback-exit', 'processing', 'success', 'error'
   const [accountData, setAccountData] = useState(null);
+  const [callbackData, setCallbackData] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
 
   // Fetch link token on mount
   useEffect(() => {
     fetchLinkToken();
+  }, []);
+
+  // Welcome animation sequence
+  useEffect(() => {
+    // Remove welcome text after animation completes (5 seconds)
+    const welcomeTimer = setTimeout(() => {
+      setShowWelcome(false);
+    }, 5000);
+
+    // Show button after welcome fades out (5 seconds total)
+    const buttonTimer = setTimeout(() => {
+      setShowButton(true);
+    }, 5000);
+
+    return () => {
+      clearTimeout(welcomeTimer);
+      clearTimeout(buttonTimer);
+    };
   }, []);
 
   const fetchLinkToken = async () => {
@@ -35,15 +55,26 @@ function App() {
     }
   };
 
-  const onSuccess = useCallback(async (public_token, metadata) => {
+  const onSuccess = useCallback((public_token, metadata) => {
     // Hide the button
     setShowButton(false);
     
-    // Show loading modal
+    // Show callback data modal
     setShowModal(true);
-    setModalState('loading');
+    setModalState('callback-success');
+    setCallbackData({
+      public_token,
+      metadata
+    });
+  }, []);
+
+  const handleProceedWithSuccess = async () => {
+    // Show processing state
+    setModalState('processing');
 
     try {
+      const { public_token } = callbackData;
+
       // Exchange public token for access token
       const exchangeResponse = await fetch('/api/exchange_public_token', {
         method: 'POST',
@@ -88,24 +119,26 @@ function App() {
         window.location.reload();
       }, 3000);
     }
-  }, []);
+  };
 
   const onExit = useCallback((err, metadata) => {
-    if (err != null) {
-      console.error('Plaid Link error:', err);
-      setErrorMessage('Something went wrong. Please try again.');
-      setModalState('error');
-      setShowModal(true);
-      
-      // Clear and reload
-      setTimeout(() => {
-        setLinkToken(null);
-        window.location.reload();
-      }, 3000);
-    }
-    // If user just closed the modal without error, show the button again
-    setShowButton(true);
+    // Show callback data modal for exit
+    setShowButton(false);
+    setShowModal(true);
+    setModalState('callback-exit');
+    setCallbackData({
+      err: err || null,
+      metadata
+    });
   }, []);
+
+  const handleExitRetry = () => {
+    // Reset to start screen
+    setShowModal(false);
+    setCallbackData(null);
+    setModalState('loading');
+    setShowButton(true);
+  };
 
   const config = {
     token: linkToken,
@@ -152,12 +185,83 @@ function App() {
     }
   };
 
+  const handleCopyCallback = async () => {
+    if (callbackData) {
+      try {
+        await navigator.clipboard.writeText(JSON.stringify(callbackData, null, 2));
+        // Add visual feedback
+        const button = document.querySelector('.copy-callback-button');
+        if (button) {
+          const originalText = button.textContent;
+          button.textContent = 'Copied!';
+          button.classList.add('copied');
+          setTimeout(() => {
+            button.textContent = originalText;
+            button.classList.remove('copied');
+          }, 2000);
+        }
+      } catch (error) {
+        console.error('Failed to copy:', error);
+      }
+    }
+  };
+
   const renderModalContent = () => {
-    if (modalState === 'loading') {
+    if (modalState === 'callback-success' && callbackData) {
+      return (
+        <div className="modal-callback">
+          <div className="callback-header">
+            <div className="callback-icon success-callback">✓</div>
+            <h2>onSuccess Callback Fired!</h2>
+          </div>
+          <p className="callback-description">
+            Here's the data returned from Plaid Link:
+          </p>
+          <div className="account-data">
+            <pre className="code-block">
+              <code>{JSON.stringify(callbackData, null, 2)}</code>
+            </pre>
+          </div>
+          <button className="copy-callback-button" onClick={handleCopyCallback}>
+            Copy Callback
+          </button>
+          <button className="proceed-button" onClick={handleProceedWithSuccess}>
+            Don't stop me now →
+          </button>
+        </div>
+      );
+    }
+
+    if (modalState === 'callback-exit' && callbackData) {
+      return (
+        <div className="modal-callback">
+          <div className="callback-header">
+            <div className="callback-icon exit-callback">✕</div>
+            <h2>onExit Callback Fired</h2>
+          </div>
+          <p className="callback-description">
+            {callbackData.err ? 'An error occurred:' : 'User exited the flow:'}
+          </p>
+          <div className="account-data">
+            <pre className="code-block">
+              <code>{JSON.stringify(callbackData, null, 2)}</code>
+            </pre>
+          </div>
+          <button className="copy-callback-button" onClick={handleCopyCallback}>
+            Copy Callback
+          </button>
+          <button className="retry-button" onClick={handleExitRetry}>
+            Womp, womp. Try again?
+          </button>
+        </div>
+      );
+    }
+
+    if (modalState === 'processing') {
       return (
         <div className="modal-loading">
           <div className="spinner"></div>
-          <p>Connecting your account...</p>
+          <p>Exchanging token and fetching account data...</p>
         </div>
       );
     }
@@ -199,9 +303,14 @@ function App() {
 
   return (
     <div className="app">
+      {showWelcome && (
+        <div className="welcome-text">
+          Welcome to Plaid Flash.
+        </div>
+      )}
       <LinkButton 
         onClick={handleButtonClick} 
-        isVisible={showButton && ready} 
+        isVisible={showButton && ready && !showWelcome} 
       />
       <Modal isVisible={showModal}>
         {renderModalContent()}
