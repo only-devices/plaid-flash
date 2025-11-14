@@ -164,13 +164,9 @@ export default function Home() {
         body: JSON.stringify({ access_token }),
       });
 
-      if (!accountsResponse.ok) {
-        throw new Error('Failed to fetch accounts data');
-      }
-
       const accountsData = await accountsResponse.json();
       
-      // Update state to show accounts data
+      // Update state to show accounts data (even if error)
       setAccountsData(accountsData);
       setApiStatusCode(accountsResponse.status);
       setModalState('accounts-data');
@@ -220,13 +216,9 @@ export default function Home() {
         body: JSON.stringify(requestBody),
       });
 
-      if (!productResponse.ok) {
-        throw new Error('Failed to fetch product data');
-      }
-
       const productData = await productResponse.json();
       
-      // Update state to show product data
+      // Update state to show product data (even if error)
       setProductData(productData);
       setApiStatusCode(productResponse.status);
       setModalState('success');

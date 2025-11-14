@@ -30,6 +30,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(response);
   } catch (error: any) {
     console.error('Error matching identity:', error);
+    
+    // If it's a Plaid error with a response, return the Plaid error details
+    if (error.response) {
+      const errorBody = await error.response.json().catch(() => ({ 
+        error: error.message || 'Failed to match identity' 
+      }));
+      return NextResponse.json(errorBody, { status: error.response.status });
+    }
+    
+    // Otherwise return generic error
     return NextResponse.json(
       { error: error.message || 'Failed to match identity' },
       { status: 500 }

@@ -76,7 +76,11 @@ export const PRODUCT_CONFIGS: Record<string, ProductConfig> = {
         required_if_supported: [],
         gradient: 'linear-gradient(135deg, #3b8fd1 0%, #00b8c4 100%)',
         apiEndpoint: '/api/transactions-get',
-        apiTitle: '/transactions/get'
+        apiTitle: '/transactions/get',
+        additionalApiParams: {
+          start_date: '2025-01-01',
+          end_date: '2025-05-31'
+        }
       },
       {
         id: 'transactions-sync',
@@ -89,6 +93,37 @@ export const PRODUCT_CONFIGS: Record<string, ProductConfig> = {
         additionalLinkParams: {
           days_requested: 14
         }
+      }
+    ]
+  },
+  signal: {
+    id: 'signal',
+    name: 'Signal',
+    products: ['signal'],
+    required_if_supported: [],
+    gradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+    children: [
+      {
+        id: 'signal-evaluate',
+        name: 'Signal Evaluate',
+        products: ['signal'],
+        required_if_supported: [],
+        gradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+        apiEndpoint: '/api/signal-evaluate',
+        apiTitle: '/signal/evaluate',
+        additionalApiParams: {
+          client_transaction_id: 'txn_flash_' + Date.now(),
+          amount: 100.00
+        }
+      },
+      {
+        id: 'signal-balance',
+        name: 'Signal Balance',
+        products: ['signal'],
+        required_if_supported: [],
+        gradient: 'linear-gradient(135deg, #fb923c 0%, #ea580c 100%)',
+        apiEndpoint: '/api/signal-balance',
+        apiTitle: '/accounts/balance/get'
       }
     ]
   }

@@ -13,7 +13,7 @@ const plaid = new PlaidApi(configuration);
 
 export async function POST(request: NextRequest) {
   try {
-    const { access_token, start_date, end_date } = await request.json();
+    const { access_token, client_transaction_id, amount } = await request.json();
 
     if (!access_token) {
       return NextResponse.json(
@@ -22,32 +22,43 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Convert string dates to Date objects for plaid-fetch
-    // Default to last 15 days if dates not provided
-    const startDateObj = start_date ? new Date(start_date) : new Date(Date.now() - 15 * 24 * 60 * 60 * 1000);
-    const endDateObj = end_date ? new Date(end_date) : new Date();
-
-    const response = await plaid.transactionsGet({
+    // Get accounts to use the first account_id
+    const accountsResponse = await plaid.accountsGet({
       access_token: access_token,
-      start_date: startDateObj,
-      end_date: endDateObj
     });
+
+    const accountId = accountsResponse.accounts?.[0]?.account_id;
+    
+    if (!accountId) {
+      return NextResponse.json(
+        { error: 'No accounts found for this item' },
+        { status: 400 }
+      );
+    }
+
+    const response = await plaid.signalEvaluate({
+      access_token: access_token,
+      account_id: accountId,
+      client_transaction_id: client_transaction_id || `txn_${Date.now()}`,
+      amount: amount || 100.00,
+      ruleset_key: 'default'
+    } as any);
 
     return NextResponse.json(response);
   } catch (error: any) {
-    console.error('Error fetching transactions:', error);
+    console.error('Error evaluating signal:', error);
     
     // If it's a Plaid error with a response, return the Plaid error details
     if (error.response) {
       const errorBody = await error.response.json().catch(() => ({ 
-        error: error.message || 'Failed to fetch transactions' 
+        error: error.message || 'Failed to evaluate signal' 
       }));
       return NextResponse.json(errorBody, { status: error.response.status });
     }
     
     // Otherwise return generic error
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch transactions' },
+      { error: error.message || 'Failed to evaluate signal' },
       { status: 500 }
     );
   }
