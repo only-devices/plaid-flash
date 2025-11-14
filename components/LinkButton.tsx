@@ -11,7 +11,7 @@ const LinkButton: React.FC<LinkButtonProps> = ({ onClick, isVisible }) => {
       className={`link-button ${isVisible ? 'visible' : 'hidden'}`}
       onClick={onClick}
     >
-      Let's Go
+    ⚡️ Let's Go
     </button>
   );
 };
