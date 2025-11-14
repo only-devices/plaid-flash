@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { usePlaidLink } from 'react-plaid-link';
 import LinkButton from '@/components/LinkButton';
 import Modal from '@/components/Modal';
@@ -23,6 +23,9 @@ export default function Home() {
   const [callbackData, setCallbackData] = useState<any>(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [apiStatusCode, setApiStatusCode] = useState<number>(200);
+  const [linkEvents, setLinkEvents] = useState<any[]>([]);
+  const [showEventLogs, setShowEventLogs] = useState(false);
+  const eventLogsRef = useRef<HTMLDivElement>(null);
 
   // Don't fetch link token on mount - wait for product selection
   // useEffect removed - link token fetched after product selection
@@ -51,6 +54,13 @@ export default function Home() {
       clearTimeout(buttonTimer);
     };
   }, [showWelcome]);
+
+  // Auto-scroll event logs to bottom when new events arrive
+  useEffect(() => {
+    if (eventLogsRef.current && linkEvents.length > 0) {
+      eventLogsRef.current.scrollTop = eventLogsRef.current.scrollHeight;
+    }
+  }, [linkEvents]);
 
   const fetchLinkToken = async (productId: string) => {
     try {
@@ -118,8 +128,9 @@ export default function Home() {
   };
 
   const onSuccess = useCallback((public_token: string, metadata: any) => {
-    // Hide the button
+    // Hide the button and event logs
     setShowButton(false);
+    setShowEventLogs(false);
     
     // Show callback data modal
     setShowModal(true);
@@ -242,7 +253,8 @@ export default function Home() {
   };
 
   const onExit = useCallback((err: any, metadata: any) => {
-    // Show callback data modal for exit
+    // Hide event logs and show callback data modal for exit
+    setShowEventLogs(false);
     setShowButton(false);
     setShowModal(true);
     setModalState('callback-exit');
@@ -250,6 +262,18 @@ export default function Home() {
       err: err || null,
       metadata
     });
+  }, []);
+
+  const onEvent = useCallback((eventName: string, metadata: any) => {
+    // Add event to the logs
+    setLinkEvents(prevEvents => [
+      ...prevEvents,
+      {
+        timestamp: new Date().toISOString(),
+        eventName,
+        metadata
+      }
+    ]);
   }, []);
 
   const handleExitRetry = () => {
@@ -263,6 +287,8 @@ export default function Home() {
     setLinkToken(null);
     setSelectedProduct(null);
     setSelectedChildProduct(null);
+    setLinkEvents([]);
+    setShowEventLogs(false);
     setShowProductModal(true);
   };
 
@@ -270,16 +296,21 @@ export default function Home() {
     token: linkToken,
     onSuccess,
     onExit,
+    onEvent,
   };
 
   const { open, ready } = usePlaidLink(config);
 
   // Auto-open Link when ready after product selection
   useEffect(() => {
-    if (ready && linkToken && (selectedProduct || selectedChildProduct) && !showModal && !showChildModal) {
+    if (ready && linkToken && (selectedProduct || selectedChildProduct) && !showModal && !showChildModal && !showProductModal) {
+      // Clear previous events and show event logs
+      setLinkEvents([]);
+      setShowEventLogs(true);
+      setShowProductModal(false); // Ensure product modal is hidden
       open();
     }
-  }, [ready, linkToken, selectedProduct, selectedChildProduct, showModal, showChildModal, open]);
+  }, [ready, linkToken, selectedProduct, selectedChildProduct, showModal, showChildModal, showProductModal, open]);
 
   const handleButtonClick = () => {
     // Show product selection modal instead of opening Link directly
@@ -313,6 +344,8 @@ export default function Home() {
     setSelectedProduct(null);
     setSelectedChildProduct(null);
     setLinkToken(null);
+    setLinkEvents([]);
+    setShowEventLogs(false);
     setModalState('loading');
     setShowButton(true);
     setShowWelcome(false);
@@ -394,6 +427,27 @@ export default function Home() {
           button.textContent = originalText;
           button.classList.remove('copied');
         }, 2000);
+      } catch (error) {
+        console.error('Failed to copy:', error);
+      }
+    }
+  };
+
+  const handleCopyLogs = async () => {
+    if (linkEvents.length > 0) {
+      try {
+        await navigator.clipboard.writeText(JSON.stringify(linkEvents, null, 2));
+        // Add visual feedback
+        const button = document.querySelector('.copy-logs-button');
+        if (button) {
+          const originalText = button.textContent;
+          button.textContent = 'Copied!';
+          button.classList.add('copied');
+          setTimeout(() => {
+            button.textContent = originalText;
+            button.classList.remove('copied');
+          }, 2000);
+        }
       } catch (error) {
         console.error('Failed to copy:', error);
       }
@@ -567,7 +621,7 @@ export default function Home() {
       )}
       <LinkButton 
         onClick={handleButtonClick} 
-        isVisible={showButton && !showWelcome} 
+        isVisible={showButton && !showWelcome && !showProductModal && !showChildModal && !showEventLogs} 
       />
       <Modal isVisible={showProductModal}>
         <ProductSelector 
@@ -591,6 +645,41 @@ export default function Home() {
       <Modal isVisible={showModal}>
         {renderModalContent()}
       </Modal>
+      
+      {/* Event Logs Modal - Shows side by side with Plaid Link */}
+      <div className={`event-logs-container ${showEventLogs ? 'visible' : ''}`}>
+        <div className="event-logs-modal">
+          <div className="modal-success">
+            <div className="success-header">
+              <h2>🟢 onEvent Callbacks</h2>
+            </div>
+            <div className="event-logs-scroll" ref={eventLogsRef}>
+              {linkEvents.length > 0 ? (
+                linkEvents.map((event, index) => (
+                  <div key={index} className={`event-log-item ${index % 2 === 0 ? 'even' : 'odd'}`}>
+                    <pre className="event-log-content">
+                      <code>{JSON.stringify(event, null, 2)}</code>
+                    </pre>
+                  </div>
+                ))
+              ) : (
+                <div className="event-log-placeholder">
+                  <pre className="code-block">
+                    <code>// Waiting for events...</code>
+                  </pre>
+                </div>
+              )}
+            </div>
+            <button 
+              className="copy-button copy-logs-button" 
+              onClick={handleCopyLogs}
+              disabled={linkEvents.length === 0}
+            >
+              Copy Logs
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

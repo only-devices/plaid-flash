@@ -928,3 +928,216 @@ body {
   }
 }
 
+/* Event Logs Container - Side by side with Plaid Link */
+.event-logs-container {
+  position: fixed;
+  right: 30%;
+  top: 50%;
+  transform: translate(calc(50% + 40px), -50%) translateX(100%);
+  width: 900px;
+  max-width: 45vw;
+  height: 700px;
+  max-height: 85vh;
+  opacity: 0;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 999;
+  pointer-events: none;
+}
+
+.event-logs-container.visible {
+  transform: translate(calc(50% + 40px), -50%);
+  opacity: 1;
+  pointer-events: all;
+}
+
+.event-logs-modal {
+  background: rgba(26, 26, 46, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  padding: 32px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.event-logs-modal .modal-success {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.event-logs-modal .account-data {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 20px;
+}
+
+.event-logs-scroll {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 20px;
+  border-radius: 12px;
+}
+
+.event-log-item {
+  padding: 16px;
+  margin: 0;
+  transition: background-color 0.2s ease;
+}
+
+.event-log-item.even {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.event-log-item.odd {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.event-log-content {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #e2e8f0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.event-log-content code {
+  background: transparent;
+  padding: 0;
+}
+
+.event-log-placeholder {
+  padding: 40px 20px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.event-logs-modal .copy-button {
+  margin-top: auto;
+}
+
+/* Copy Logs Button */
+.copy-logs-button {
+  width: 100%;
+  padding: 16px 32px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffffff;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-top: 16px;
+  animation: fadeIn 0.8s ease-out 0.4s backwards;
+}
+
+.copy-logs-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+}
+
+.copy-logs-button:active {
+  transform: translateY(0);
+}
+
+.copy-logs-button.copied {
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+}
+
+.copy-logs-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.copy-logs-button:disabled:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+/* Adjust Plaid Link iframe position when event logs are visible */
+body:has(.event-logs-container.visible) iframe[id^="plaid-link-iframe"] {
+  inset: auto !important;
+  position: fixed !important;
+  left: 50% !important;
+  top: 50% !important;
+  width: 600px !important;
+  max-width: 45vw !important;
+  height: 700px !important;
+  max-height: 85vh !important;
+  transform: translate(calc(-100% - 40px), -50%) !important;
+  right: auto !important;
+  bottom: auto !important;
+  border-radius: 24px !important;
+}
+
+@media (max-width: 1400px) {
+  .event-logs-container {
+    width: 420px;
+    height: 650px;
+  }
+  
+  .event-logs-container.visible {
+    transform: translate(calc(50% + 30px), -50%);
+  }
+  
+  body:has(.event-logs-container.visible) iframe[id^="plaid-link-iframe"] {
+    width: 420px !important;
+    height: 700px !important;
+    transform: translate(calc(-100% - 30px), -50%) !important;
+  }
+}
+
+@media (max-width: 1024px) {
+  .event-logs-container {
+    width: 400px;
+    height: 600px;
+  }
+  
+  .event-logs-container.visible {
+    transform: translate(calc(50% + 20px), -50%);
+  }
+  
+  body:has(.event-logs-container.visible) iframe[id^="plaid-link-iframe"] {
+    width: 400px !important;
+    height: 650px !important;
+    transform: translate(calc(-100% - 20px), -50%) !important;
+  }
+}
+
+@media (max-width: 768px) {
+  /* Stack vertically on mobile */
+  .event-logs-container {
+    width: 90%;
+    max-width: 400px;
+    height: 40vh;
+    min-height: 300px;
+    left: 50%;
+    right: auto;
+    top: auto;
+    bottom: 2%;
+    transform: translate(-50%, 100%);
+  }
+  
+  .event-logs-container.visible {
+    transform: translate(-50%, 0);
+  }
+  
+  body:has(.event-logs-container.visible) iframe[id^="plaid-link-iframe"] {
+    width: 90% !important;
+    max-width: 400px !important;
+    height: 550px !important;
+    max-height: 50vh !important;
+    left: 50% !important;
+    top: 25% !important;
+    transform: translate(-50%, -50%) !important;
+  }
+}
+
