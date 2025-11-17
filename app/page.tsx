@@ -738,7 +738,13 @@ export default function Home() {
     <div className="app">
       {showWelcome && (
         <div className="welcome-text">
-          Welcome to Plaid Flash.
+          <span className="welcome-word welcome-word-1">Welcome</span>
+          {' '}
+          <span className="welcome-word welcome-word-2">to</span>
+          {' '}
+          <span className="welcome-word welcome-word-3">Plaid</span>
+          {' '}
+          <span className="welcome-word welcome-word-4">Flash</span>
         </div>
       )}
       <LinkButton 
