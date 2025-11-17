@@ -6,6 +6,7 @@ import LinkButton from '@/components/LinkButton';
 import Modal from '@/components/Modal';
 import ProductSelector from '@/components/ProductSelector';
 import JsonHighlight from '@/components/JsonHighlight';
+import CodeEditor from '@uiw/react-textarea-code-editor';
 import { PRODUCTS_ARRAY, PRODUCT_CONFIGS, getProductConfigById } from '@/lib/productConfig';
 
 export default function Home() {
@@ -30,6 +31,9 @@ export default function Home() {
   const [linkTokenConfig, setLinkTokenConfig] = useState<any>(null);
   const [eventLogsPosition, setEventLogsPosition] = useState<'left' | 'right'>('right');
   const [isTransitioningModals, setIsTransitioningModals] = useState(false);
+  const [isEditingConfig, setIsEditingConfig] = useState(false);
+  const [editedConfig, setEditedConfig] = useState('');
+  const [configError, setConfigError] = useState<string | null>(null);
 
   // Don't fetch link token on mount - wait for product selection
   // useEffect removed - link token fetched after product selection
@@ -165,12 +169,34 @@ export default function Home() {
     setShowModal(true);
   };
 
-  const handleProceedWithConfig = () => {
-    // User approved the config, now fetch the link token
+  const handleProceedWithConfig = async () => {
+    // User approved the config, now fetch the link token using the (potentially edited) linkTokenConfig
     setShowModal(false);
-    const effectiveProductId = selectedChildProduct || selectedProduct;
-    if (effectiveProductId) {
-      fetchLinkToken(effectiveProductId);
+    
+    try {
+      // Use the linkTokenConfig state which may have been edited by the user
+      const response = await fetch('/api/create-link-token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(linkTokenConfig),
+      });
+      const data = await response.json();
+      setLinkToken(data.link_token);
+    } catch (error) {
+      console.error('Error fetching link token:', error);
+      setErrorMessage('Failed to initialize. Please try again.');
+      setModalState('error');
+      setShowModal(true);
+      setShowWelcome(false);
+      
+      // Reset after a delay
+      setTimeout(() => {
+        setShowModal(false);
+        setModalState('loading');
+        setShowProductModal(true);
+      }, 3000);
     }
   };
 
@@ -179,6 +205,8 @@ export default function Home() {
     setShowModal(false);
     setLinkTokenConfig(null);
     setModalState('loading');
+    setIsEditingConfig(false);
+    setConfigError(null);
     
     // If we came from child selection, go back to child modal
     // Otherwise go back to parent product modal
@@ -188,6 +216,77 @@ export default function Home() {
     } else {
       setSelectedProduct(null);
       setShowProductModal(true);
+    }
+  };
+
+  const handleToggleEditMode = () => {
+    if (!isEditingConfig) {
+      // Entering edit mode - populate editedConfig with current config
+      setEditedConfig(JSON.stringify(linkTokenConfig, null, 2));
+      setConfigError(null);
+    }
+    setIsEditingConfig(!isEditingConfig);
+  };
+
+  const handleSaveConfig = () => {
+    try {
+      const parsed = JSON.parse(editedConfig);
+      setLinkTokenConfig(parsed);
+      setConfigError(null);
+      setIsEditingConfig(false);
+      return true;
+    } catch (error: any) {
+      setConfigError(`Invalid JSON: ${error.message}`);
+      return false;
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditingConfig(false);
+    setConfigError(null);
+    setEditedConfig('');
+  };
+
+  const handleSaveAndProceed = async () => {
+    try {
+      // Validate JSON first
+      const parsed = JSON.parse(editedConfig);
+      
+      // Close modal immediately to avoid showing read-only view
+      setShowModal(false);
+      
+      // Update config and reset edit state
+      setLinkTokenConfig(parsed);
+      setConfigError(null);
+      setIsEditingConfig(false);
+      
+      // Proceed with link token creation
+      try {
+        const response = await fetch('/api/create-link-token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(parsed),
+        });
+        const data = await response.json();
+        setLinkToken(data.link_token);
+      } catch (error) {
+        console.error('Error fetching link token:', error);
+        setErrorMessage('Failed to initialize. Please try again.');
+        setModalState('error');
+        setShowModal(true);
+        setShowWelcome(false);
+        
+        // Reset after a delay
+        setTimeout(() => {
+          setShowModal(false);
+          setModalState('loading');
+          setShowProductModal(true);
+        }, 3000);
+      }
+    } catch (error: any) {
+      setConfigError(`Invalid JSON: ${error.message}`);
     }
   };
 
@@ -569,21 +668,80 @@ export default function Home() {
         <div className="modal-success">
           <div className="success-header">
             <h2>Here&apos;s the /link/token/create configuration that will be used:</h2>
-          </div>
-          <div className="account-data">
-            <JsonHighlight data={linkTokenConfig} />
-          </div>
-          <div className="button-row">
-            <button className="action-button button-red" onClick={handleGoBackToProducts}>
-              Go back, I want to change something
+            <button 
+              className="config-edit-icon" 
+              onClick={handleToggleEditMode}
+              title={isEditingConfig ? "Exit edit mode" : "Edit configuration"}
+            >
+              {isEditingConfig ? (
+                // X icon for exit
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              ) : (
+                // Pencil icon for edit
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+              )}
             </button>
-            <button className="action-button button-purple" onClick={handleCopyConfig}>
-              Copy Config
-            </button>
-            <button className="action-button button-blue" onClick={handleProceedWithConfig}>
-              Looks good, proceed!
-            </button>
           </div>
+          {!isEditingConfig ? (
+            <div className="account-data">
+              <JsonHighlight data={linkTokenConfig} />
+            </div>
+          ) : (
+            <div className="code-editor-container">
+              <CodeEditor
+                value={editedConfig}
+                language="json"
+                onChange={(e) => setEditedConfig(e.target.value)}
+                padding={15}
+                data-color-mode="dark"
+                style={{
+                  fontSize: 13,
+                  fontFamily: 'Monaco, Menlo, Ubuntu Mono, Consolas, monospace',
+                  backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                  borderRadius: '12px',
+                  minHeight: '400px',
+                  maxHeight: '500px',
+                  overflowY: 'auto',
+                }}
+              />
+              {configError && (
+                <div className="config-error">
+                  {configError}
+                </div>
+              )}
+            </div>
+          )}
+          {!isEditingConfig ? (
+            <div className="button-row">
+              <button className="action-button button-red" onClick={handleGoBackToProducts}>
+                Go back, I want to do something else
+              </button>
+              <button className="action-button button-purple" onClick={handleCopyConfig}>
+                Copy Config
+              </button>
+              <button className="action-button button-blue" onClick={handleProceedWithConfig}>
+                Looks good, proceed!
+              </button>
+            </div>
+          ) : (
+            <div className="button-row">
+              <button className="action-button button-red" onClick={handleCancelEdit}>
+                Cancel
+              </button>
+              <button className="action-button button-purple" onClick={handleCopyConfig}>
+                Copy Config
+              </button>
+              <button className="action-button button-blue" onClick={handleSaveAndProceed}>
+                Save & Proceed
+              </button>
+            </div>
+          )}
         </div>
       );
     }
@@ -628,7 +786,7 @@ export default function Home() {
               Copy Callback
             </button>
             <button className="action-button button-red" onClick={handleExitRetry}>
-              Womp, womp. Try again?
+              Try again?
             </button>
           </div>
         </div>

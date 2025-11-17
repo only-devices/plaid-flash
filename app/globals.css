@@ -348,6 +348,68 @@ body {
   flex: 1;
 }
 
+/* Config Edit Icon */
+.config-edit-icon {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 40px;
+  height: 40px;
+  background: rgba(102, 126, 234, 0.2);
+  border: 1px solid rgba(102, 126, 234, 0.3);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  color: #88c0d0;
+}
+
+.config-edit-icon:hover {
+  background: rgba(102, 126, 234, 0.3);
+  border-color: rgba(102, 126, 234, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.config-edit-icon:active {
+  transform: translateY(0);
+}
+
+.config-edit-icon svg {
+  display: block;
+}
+
+/* Code Editor Container */
+.code-editor-container {
+  margin: 24px 0;
+  animation: fadeIn 0.7s ease-out 0.2s backwards;
+}
+
+.code-editor-container textarea {
+  caret-color: white !important;
+  outline: none !important;
+}
+
+/* Add terminal-style blinking cursor */
+.code-editor-container textarea:focus {
+  caret-color: white !important;
+}
+
+/* Config Error Message */
+.config-error {
+  margin-top: 12px;
+  padding: 12px 16px;
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 8px;
+  color: #fca5a5;
+  font-size: 14px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+  animation: shake 0.5s ease-in-out;
+}
+
 .status-badge {
   padding: 6px 16px;
   border-radius: 20px;
