@@ -5,6 +5,7 @@ import { usePlaidLink } from 'react-plaid-link';
 import LinkButton from '@/components/LinkButton';
 import Modal from '@/components/Modal';
 import ProductSelector from '@/components/ProductSelector';
+import JsonHighlight from '@/components/JsonHighlight';
 import { PRODUCTS_ARRAY, PRODUCT_CONFIGS, getProductConfigById } from '@/lib/productConfig';
 
 export default function Home() {
@@ -17,7 +18,7 @@ export default function Home() {
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
   const [selectedChildProduct, setSelectedChildProduct] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [modalState, setModalState] = useState<'loading' | 'callback-success' | 'callback-exit' | 'accounts-data' | 'processing-accounts' | 'processing-product' | 'success' | 'error'>('loading');
+  const [modalState, setModalState] = useState<'loading' | 'preview-config' | 'callback-success' | 'callback-exit' | 'accounts-data' | 'processing-accounts' | 'processing-product' | 'success' | 'error'>('loading');
   const [accountsData, setAccountsData] = useState<any>(null);
   const [productData, setProductData] = useState<any>(null);
   const [callbackData, setCallbackData] = useState<any>(null);
@@ -26,6 +27,9 @@ export default function Home() {
   const [linkEvents, setLinkEvents] = useState<any[]>([]);
   const [showEventLogs, setShowEventLogs] = useState(false);
   const eventLogsRef = useRef<HTMLDivElement>(null);
+  const [linkTokenConfig, setLinkTokenConfig] = useState<any>(null);
+  const [eventLogsPosition, setEventLogsPosition] = useState<'left' | 'right'>('right');
+  const [isTransitioningModals, setIsTransitioningModals] = useState(false);
 
   // Don't fetch link token on mount - wait for product selection
   // useEffect removed - link token fetched after product selection
@@ -113,24 +117,85 @@ export default function Home() {
       setShowProductModal(false);
       setShowChildModal(true);
     } else {
-      // Direct product, proceed to Link
+      // Direct product, show preview modal
       setSelectedProduct(productId);
       setSelectedChildProduct(null);
       setShowProductModal(false);
-      fetchLinkToken(productId);
+      showLinkConfigPreview(productId);
     }
   };
 
   const handleChildProductSelect = (childId: string) => {
     setSelectedChildProduct(childId);
     setShowChildModal(false);
-    fetchLinkToken(childId);
+    showLinkConfigPreview(childId);
+  };
+
+  const showLinkConfigPreview = (productId: string) => {
+    const productConfig = getProductConfigById(productId);
+    if (!productConfig) {
+      return;
+    }
+
+    // Build the FULL configuration that will be sent to Plaid
+    const fullConfig: any = {
+      link_customization_name: 'flash',
+      user: {
+        client_user_id: 'flash_user_id01',
+        phone_number: '+14155550011'
+      },
+      client_name: 'Plaid Flash',
+      products: productConfig.products,
+      country_codes: ['US'],
+      language: 'en'
+    };
+
+    // Add required_if_supported_products if not empty
+    if (productConfig.required_if_supported && productConfig.required_if_supported.length > 0) {
+      fullConfig.required_if_supported_products = productConfig.required_if_supported;
+    }
+
+    // Add additional link params if they exist (e.g., days_requested for transactions sync)
+    if (productConfig.additionalLinkParams) {
+      Object.assign(fullConfig, productConfig.additionalLinkParams);
+    }
+
+    setLinkTokenConfig(fullConfig);
+    setModalState('preview-config');
+    setShowModal(true);
+  };
+
+  const handleProceedWithConfig = () => {
+    // User approved the config, now fetch the link token
+    setShowModal(false);
+    const effectiveProductId = selectedChildProduct || selectedProduct;
+    if (effectiveProductId) {
+      fetchLinkToken(effectiveProductId);
+    }
+  };
+
+  const handleGoBackToProducts = () => {
+    // User wants to change product selection
+    setShowModal(false);
+    setLinkTokenConfig(null);
+    setModalState('loading');
+    
+    // If we came from child selection, go back to child modal
+    // Otherwise go back to parent product modal
+    if (selectedChildProduct) {
+      setSelectedChildProduct(null);
+      setShowChildModal(true);
+    } else {
+      setSelectedProduct(null);
+      setShowProductModal(true);
+    }
   };
 
   const onSuccess = useCallback((public_token: string, metadata: any) => {
-    // Hide the button and event logs
+    // Hide the button but keep event logs visible
     setShowButton(false);
-    setShowEventLogs(false);
+    // Slide event logs to the left (Link's position)
+    setEventLogsPosition('left');
     
     // Show callback data modal
     setShowModal(true);
@@ -142,8 +207,21 @@ export default function Home() {
   }, []);
 
   const handleProceedWithSuccess = async () => {
+    // Start fade-out animation for both modals
+    setIsTransitioningModals(true);
+    
+    // Wait for fade-out animation to complete (500ms)
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Hide both modals and reset event logs
+    setShowEventLogs(false);
+    setShowModal(false);
+    setEventLogsPosition('right');
+    setIsTransitioningModals(false);
+    
     // Show processing state for accounts
     setModalState('processing-accounts');
+    setShowModal(true);
 
     try {
       const { public_token } = callbackData;
@@ -253,9 +331,12 @@ export default function Home() {
   };
 
   const onExit = useCallback((err: any, metadata: any) => {
-    // Hide event logs and show callback data modal for exit
-    setShowEventLogs(false);
+    // Hide button but keep event logs visible
     setShowButton(false);
+    // Slide event logs to the left (Link's position)
+    setEventLogsPosition('left');
+    
+    // Show callback data modal for exit
     setShowModal(true);
     setModalState('callback-exit');
     setCallbackData({
@@ -276,9 +357,18 @@ export default function Home() {
     ]);
   }, []);
 
-  const handleExitRetry = () => {
-    // Reset to start screen without reloading
+  const handleExitRetry = async () => {
+    // Start fade-out animation for both modals
+    setIsTransitioningModals(true);
+    
+    // Wait for fade-out animation to complete (500ms)
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Hide both modals and reset state
     setShowModal(false);
+    setShowEventLogs(false);
+    setEventLogsPosition('right');
+    setIsTransitioningModals(false);
     setCallbackData(null);
     setModalState('loading');
     setShowButton(true);
@@ -288,7 +378,6 @@ export default function Home() {
     setSelectedProduct(null);
     setSelectedChildProduct(null);
     setLinkEvents([]);
-    setShowEventLogs(false);
     setShowProductModal(true);
   };
 
@@ -335,7 +424,7 @@ export default function Home() {
       }
     }
 
-    // Reset to start screen without reloading
+    // Reset to product selection screen without reloading
     setShowModal(false);
     setAccountsData(null);
     setProductData(null);
@@ -347,8 +436,9 @@ export default function Home() {
     setLinkEvents([]);
     setShowEventLogs(false);
     setModalState('loading');
-    setShowButton(true);
+    setShowButton(false);
     setShowWelcome(false);
+    setShowProductModal(true);
   };
 
   const handleCopyResponse = async () => {
@@ -454,7 +544,50 @@ export default function Home() {
     }
   };
 
+  const handleCopyConfig = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    if (linkTokenConfig) {
+      try {
+        await navigator.clipboard.writeText(JSON.stringify(linkTokenConfig, null, 2));
+        // Add visual feedback
+        const button = event.currentTarget;
+        const originalText = button.textContent;
+        button.textContent = 'Copied!';
+        button.classList.add('copied');
+        setTimeout(() => {
+          button.textContent = originalText;
+          button.classList.remove('copied');
+        }, 2000);
+      } catch (error) {
+        console.error('Failed to copy:', error);
+      }
+    }
+  };
+
   const renderModalContent = () => {
+    if (modalState === 'preview-config' && linkTokenConfig) {
+      return (
+        <div className="modal-success">
+          <div className="success-header">
+            <h2>Here&apos;s the /link/token/create configuration that will be used:</h2>
+          </div>
+          <div className="account-data">
+            <JsonHighlight data={linkTokenConfig} />
+          </div>
+          <div className="button-row">
+            <button className="action-button button-red" onClick={handleGoBackToProducts}>
+              Go back, I want to change something
+            </button>
+            <button className="action-button button-purple" onClick={handleCopyConfig}>
+              Copy Config
+            </button>
+            <button className="action-button button-blue" onClick={handleProceedWithConfig}>
+              Looks good, proceed!
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     if (modalState === 'callback-success' && callbackData) {
       return (
         <div className="modal-callback">
@@ -466,9 +599,7 @@ export default function Home() {
             Here&apos;s the data returned from Plaid Link:
           </p>
           <div className="account-data">
-            <pre className="code-block">
-              <code>{JSON.stringify(callbackData, null, 2)}</code>
-            </pre>
+            <JsonHighlight data={callbackData} />
           </div>
           <div className="button-row">
             <button className="action-button button-purple" onClick={handleCopyCallback}>
@@ -489,19 +620,14 @@ export default function Home() {
             <div className="callback-icon exit-callback">✕</div>
             <h2>onExit Callback Fired</h2>
           </div>
-          <p className="callback-description">
-            {callbackData.err ? 'An error occurred:' : 'User exited the flow:'}
-          </p>
           <div className="account-data">
-            <pre className="code-block">
-              <code>{JSON.stringify(callbackData, null, 2)}</code>
-            </pre>
+            <JsonHighlight data={callbackData} />
           </div>
           <div className="button-row">
             <button className="action-button button-purple" onClick={handleCopyCallback}>
               Copy Callback
             </button>
-            <button className="action-button button-pink" onClick={handleExitRetry}>
+            <button className="action-button button-red" onClick={handleExitRetry}>
               Womp, womp. Try again?
             </button>
           </div>
@@ -524,15 +650,13 @@ export default function Home() {
             </span>
           </div>
           <div className="account-data">
-            <pre className="code-block">
-              <code>{JSON.stringify(accountsData, null, 2)}</code>
-            </pre>
+            <JsonHighlight data={accountsData} />
           </div>
           <div className="button-row">
             <button className="action-button button-purple" onClick={handleCopyAccounts}>
               Copy Response
             </button>
-            <button className="action-button button-pink" onClick={handleCopyAccessToken}>
+            <button className="action-button button-green" onClick={handleCopyAccessToken}>
               Copy Access Token
             </button>
             <button className="action-button button-blue" onClick={handleCallProduct}>
@@ -590,15 +714,13 @@ export default function Home() {
             </span>
           </div>
           <div className="account-data">
-            <pre className="code-block">
-              <code>{JSON.stringify(productData, null, 2)}</code>
-            </pre>
+            <JsonHighlight data={productData} />
           </div>
           <div className="button-row">
             <button className="action-button button-purple" onClick={handleCopyResponse}>
               Copy Response
             </button>
-            <button className="action-button button-pink" onClick={handleCopyAccessToken}>
+            <button className="action-button button-green" onClick={handleCopyAccessToken}>
               Copy Access Token
             </button>
             <button className="action-button button-blue" onClick={handleStartOver}>
@@ -642,12 +764,12 @@ export default function Home() {
           />
         )}
       </Modal>
-      <Modal isVisible={showModal}>
+      <Modal isVisible={showModal && !(showEventLogs && (modalState === 'callback-success' || modalState === 'callback-exit'))}>
         {renderModalContent()}
       </Modal>
       
       {/* Event Logs Modal - Shows side by side with Plaid Link */}
-      <div className={`event-logs-container ${showEventLogs ? 'visible' : ''}`}>
+      <div className={`event-logs-container ${showEventLogs ? 'visible' : ''} event-logs-${eventLogsPosition} ${isTransitioningModals ? 'fading-out' : ''}`}>
         <div className="event-logs-modal">
           <div className="modal-success">
             <div className="success-header">
@@ -657,15 +779,15 @@ export default function Home() {
               {linkEvents.length > 0 ? (
                 linkEvents.map((event, index) => (
                   <div key={index} className={`event-log-item ${index % 2 === 0 ? 'even' : 'odd'}`}>
-                    <pre className="event-log-content">
-                      <code>{JSON.stringify(event, null, 2)}</code>
-                    </pre>
+                    <div className="event-log-content">
+                      <JsonHighlight data={event} />
+                    </div>
                   </div>
                 ))
               ) : (
                 <div className="event-log-placeholder">
                   <pre className="code-block">
-                    <code>// Waiting for events...</code>
+                    <code>... waiting for events</code>
                   </pre>
                 </div>
               )}
@@ -675,11 +797,18 @@ export default function Home() {
               onClick={handleCopyLogs}
               disabled={linkEvents.length === 0}
             >
-              Copy Logs
+              Copy onEvent Callbacks
             </button>
           </div>
         </div>
       </div>
+      
+      {/* Callback Modal Container - Shows on the right when event logs slide left */}
+      {(modalState === 'callback-success' || modalState === 'callback-exit') && showEventLogs && (
+        <div className={`callback-modal-container ${isTransitioningModals ? 'fading-out' : ''}`}>
+          {renderModalContent()}
+        </div>
+      )}
     </div>
   );
 }
