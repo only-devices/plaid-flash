@@ -412,19 +412,19 @@ body {
 
 .status-badge {
   padding: 6px 16px;
-  border-radius: 20px;
+  border-radius: 12px;
   font-size: 14px;
   font-weight: 600;
   margin-left: auto;
 }
 
 .status-success {
-  background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+  background: linear-gradient(135deg, #3aae65 0%, #1dac52 100%);
   color: #ffffff;
 }
 
 .status-error {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  background: linear-gradient(135deg, #ef4444 0%, #b11e1e 100%);
   color: #ffffff;
 }
 
@@ -1464,6 +1464,357 @@ body:has(.event-logs-container.visible) iframe[id^="plaid-link-iframe"] {
     left: 50% !important;
     top: 25% !important;
     transform: translate(-50%, -50%) !important;
+  }
+}
+
+/* Settings/Configuration Styles */
+
+/* Settings Gear Button - mirrors back button position but on right */
+.settings-gear-button {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+  z-index: 10;
+}
+
+.settings-gear-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+}
+
+.settings-gear-button:active {
+  transform: translateY(0);
+}
+
+.settings-gear-button svg {
+  display: block;
+}
+
+/* Settings Indicator - small badge on gear icon */
+.settings-indicator {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 12px;
+  height: 12px;
+  background: #ff7a32;
+  border-radius: 50%;
+  border: 2px solid rgba(26, 26, 46, 0.95);
+  box-shadow: 0 0 10px rgba(0, 184, 196, 0.8);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
+}
+
+/* Settings Modal */
+.settings-modal {
+  color: #ffffff;
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.settings-header {
+  text-align: center;
+  margin-bottom: 32px;
+  animation: slideDown 0.5s ease-out;
+}
+
+.settings-header h2 {
+  font-size: 28px;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* Settings Grid */
+.settings-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+  margin-bottom: 32px;
+  animation: fadeIn 0.7s ease-out 0.2s backwards;
+}
+
+/* Toggle Row */
+.settings-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 16px 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.settings-toggle-row:hover:not(:has(.settings-toggle.disabled)) {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Toggle Switch Container */
+.settings-toggle {
+  width: 60px;
+  height: 32px;
+  border-radius: 16px;
+  position: relative;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.settings-toggle-track {
+  width: 100%;
+  height: 100%;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #c7659f 0%, #c43d52 100%);
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.settings-toggle.checked .settings-toggle-track {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+/* Toggle Thumb (sliding circle with dash/circle) */
+.settings-toggle-thumb {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 24px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  color: #6b7280;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.settings-toggle.checked .settings-toggle-thumb {
+  left: 32px;
+  color: #10b981;
+}
+
+/* Disabled State */
+.settings-toggle.disabled {
+  opacity: 0.4;
+  cursor: not-allowed !important;
+}
+
+.settings-toggle.disabled .settings-toggle-track {
+  background: linear-gradient(135deg, #c7659f 0%, #c43d52 100%);
+}
+
+.settings-toggle-row:has(.settings-toggle.disabled) {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.settings-toggle-row:has(.settings-toggle.disabled):hover {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Toggle Label */
+.settings-toggle-label {
+  font-size: 18px;
+  font-weight: 500;
+  color: #ffffff;
+  flex: 1;
+}
+
+/* Responsive adjustments for settings */
+@media (max-width: 768px) {
+  .settings-gear-button {
+    top: 16px;
+    right: 16px;
+    width: 44px;
+    height: 44px;
+  }
+
+  .settings-modal {
+    padding: 16px;
+  }
+
+  .settings-header h2 {
+    font-size: 24px;
+  }
+
+  .settings-grid {
+    gap: 16px;
+  }
+
+  .settings-toggle-label {
+    font-size: 16px;
+  }
+}
+
+/* Zap Mode Results - Side-by-side modals for accounts and product data */
+.zap-results-left,
+.zap-results-right {
+  position: fixed;
+  top: 50%;
+  width: 900px;
+  max-width: calc(40vw - 100px);
+  z-index: 1000;
+  opacity: 0;
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+.zap-results-left {
+  left: 30%;
+  transform: translate(calc(-50% - 40px), -50%);
+}
+
+.zap-results-right {
+  right: 30%;
+  transform: translate(calc(50% + 40px), -50%);
+}
+
+.zap-results-left .modal-success,
+.zap-results-right .modal-success {
+  background: rgba(26, 26, 46, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  padding: 32px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  min-height: 600px;
+  display: flex;
+  flex-direction: column;
+}
+
+.zap-results-left .account-data,
+.zap-results-right .account-data {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+/* Zap Reset Button - Centered below the two modals */
+.zap-reset-button {
+  position: fixed;
+  bottom: 8vh;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 18px 48px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #ffffff;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+  z-index: 1001;
+  animation: fadeIn 0.8s ease-out 0.4s backwards;
+}
+
+.zap-reset-button:hover {
+  transform: translateX(-50%) translateY(-3px);
+  box-shadow: 0 12px 30px rgba(102, 126, 234, 0.5);
+}
+
+.zap-reset-button:active {
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Responsive adjustments for Zap Mode */
+@media (max-width: 1400px) {
+  .zap-results-left,
+  .zap-results-right {
+    width: 420px;
+    max-width: calc(40vw - 80px);
+  }
+  
+  .zap-results-left {
+    transform: translate(calc(-50% - 30px), -50%);
+  }
+  
+  .zap-results-right {
+    transform: translate(calc(50% + 30px), -50%);
+  }
+  
+  .zap-results-left .modal-success,
+  .zap-results-right .modal-success {
+    min-height: 500px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .zap-results-left,
+  .zap-results-right {
+    width: 400px;
+    max-width: calc(40vw - 60px);
+  }
+  
+  .zap-results-left {
+    transform: translate(calc(-50% - 20px), -50%);
+  }
+  
+  .zap-results-right {
+    transform: translate(calc(50% + 20px), -50%);
+  }
+  
+  .zap-results-left .modal-success,
+  .zap-results-right .modal-success {
+    min-height: 500px;
+  }
+}
+
+@media (max-width: 768px) {
+  .zap-results-left,
+  .zap-results-right {
+    width: 90%;
+    max-width: 400px;
+    left: 50%;
+    right: auto;
+  }
+  
+  .zap-results-left {
+    top: 15%;
+    transform: translate(-50%, 0);
+  }
+  
+  .zap-results-right {
+    top: auto;
+    bottom: 15%;
+    transform: translate(-50%, 0);
+  }
+  
+  .zap-results-left .modal-success,
+  .zap-results-right .modal-success {
+    min-height: 400px;
+  }
+  
+  .zap-reset-button {
+    bottom: 2vh;
+    padding: 14px 32px;
+    font-size: 16px;
   }
 }
 

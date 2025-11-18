@@ -1,36 +1,47 @@
+import { useMemo, useRef } from 'react';
+
 interface JsonHighlightProps {
   data: any;
 }
 
+// Generate unique ID for each component instance
+let instanceCounter = 0;
+
 export default function JsonHighlight({ data }: JsonHighlightProps) {
+  // Generate a unique ID for this component instance
+  const instanceId = useMemo(() => `json-${++instanceCounter}`, []);
+  
+  // Use a counter to ensure every element gets a unique key
+  const keyCounter = useRef(0);
+  
   const formatJson = (obj: any, indent = 0): JSX.Element[] => {
     const elements: JSX.Element[] = [];
     const spaces = '  '.repeat(indent);
 
     if (obj === null) {
       elements.push(
-        <span key={`null-${indent}`} className="json-null">null</span>
+        <span key={`${instanceId}-${keyCounter.current++}`} className="json-null">null</span>
       );
       return elements;
     }
 
     if (typeof obj === 'boolean') {
       elements.push(
-        <span key={`bool-${indent}`} className="json-boolean">{obj.toString()}</span>
+        <span key={`${instanceId}-${keyCounter.current++}`} className="json-boolean">{obj.toString()}</span>
       );
       return elements;
     }
 
     if (typeof obj === 'number') {
       elements.push(
-        <span key={`num-${indent}`} className="json-number">{obj}</span>
+        <span key={`${instanceId}-${keyCounter.current++}`} className="json-number">{obj}</span>
       );
       return elements;
     }
 
     if (typeof obj === 'string') {
       elements.push(
-        <span key={`str-${indent}`} className="json-string">&quot;{obj}&quot;</span>
+        <span key={`${instanceId}-${keyCounter.current++}`} className="json-string">&quot;{obj}&quot;</span>
       );
       return elements;
     }
@@ -38,32 +49,32 @@ export default function JsonHighlight({ data }: JsonHighlightProps) {
     if (Array.isArray(obj)) {
       if (obj.length === 0) {
         elements.push(
-          <span key={`arr-empty-${indent}`} className="json-punctuation">[]</span>
+          <span key={`${instanceId}-${keyCounter.current++}`} className="json-punctuation">[]</span>
         );
         return elements;
       }
 
       elements.push(
-        <span key={`arr-open-${indent}`} className="json-punctuation">[</span>,
-        <br key={`arr-br1-${indent}`} />
+        <span key={`${instanceId}-${keyCounter.current++}`} className="json-punctuation">[</span>,
+        <br key={`${instanceId}-${keyCounter.current++}`} />
       );
 
       obj.forEach((item, index) => {
         elements.push(
-          <span key={`arr-space-${indent}-${index}`}>{spaces}  </span>
+          <span key={`${instanceId}-${keyCounter.current++}`}>{spaces}  </span>
         );
         elements.push(...formatJson(item, indent + 1));
         if (index < obj.length - 1) {
           elements.push(
-            <span key={`arr-comma-${indent}-${index}`} className="json-punctuation">,</span>
+            <span key={`${instanceId}-${keyCounter.current++}`} className="json-punctuation">,</span>
           );
         }
-        elements.push(<br key={`arr-br-${indent}-${index}`} />);
+        elements.push(<br key={`${instanceId}-${keyCounter.current++}`} />);
       });
 
       elements.push(
-        <span key={`arr-close-space-${indent}`}>{spaces}</span>,
-        <span key={`arr-close-${indent}`} className="json-punctuation">]</span>
+        <span key={`${instanceId}-${keyCounter.current++}`}>{spaces}</span>,
+        <span key={`${instanceId}-${keyCounter.current++}`} className="json-punctuation">]</span>
       );
       return elements;
     }
@@ -72,40 +83,43 @@ export default function JsonHighlight({ data }: JsonHighlightProps) {
       const keys = Object.keys(obj);
       if (keys.length === 0) {
         elements.push(
-          <span key={`obj-empty-${indent}`} className="json-punctuation">{'{}'}</span>
+          <span key={`${instanceId}-${keyCounter.current++}`} className="json-punctuation">{'{}'}</span>
         );
         return elements;
       }
 
       elements.push(
-        <span key={`obj-open-${indent}`} className="json-punctuation">{'{'}</span>,
-        <br key={`obj-br1-${indent}`} />
+        <span key={`${instanceId}-${keyCounter.current++}`} className="json-punctuation">{'{'}</span>,
+        <br key={`${instanceId}-${keyCounter.current++}`} />
       );
 
       keys.forEach((key, index) => {
         elements.push(
-          <span key={`obj-space-${indent}-${index}`}>{spaces}  </span>,
-          <span key={`obj-key-${indent}-${index}`} className="json-key">&quot;{key}&quot;</span>,
-          <span key={`obj-colon-${indent}-${index}`} className="json-punctuation">: </span>
+          <span key={`${instanceId}-${keyCounter.current++}`}>{spaces}  </span>,
+          <span key={`${instanceId}-${keyCounter.current++}`} className="json-key">&quot;{key}&quot;</span>,
+          <span key={`${instanceId}-${keyCounter.current++}`} className="json-punctuation">: </span>
         );
         elements.push(...formatJson(obj[key], indent + 1));
         if (index < keys.length - 1) {
           elements.push(
-            <span key={`obj-comma-${indent}-${index}`} className="json-punctuation">,</span>
+            <span key={`${instanceId}-${keyCounter.current++}`} className="json-punctuation">,</span>
           );
         }
-        elements.push(<br key={`obj-br-${indent}-${index}`} />);
+        elements.push(<br key={`${instanceId}-${keyCounter.current++}`} />);
       });
 
       elements.push(
-        <span key={`obj-close-space-${indent}`}>{spaces}</span>,
-        <span key={`obj-close-${indent}`} className="json-punctuation">{'}'}</span>
+        <span key={`${instanceId}-${keyCounter.current++}`}>{spaces}</span>,
+        <span key={`${instanceId}-${keyCounter.current++}`} className="json-punctuation">{'}'}</span>
       );
       return elements;
     }
 
     return elements;
   };
+
+  // Reset counter before each render
+  keyCounter.current = 0;
 
   return (
     <pre className="code-block">

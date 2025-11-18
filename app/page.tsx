@@ -7,6 +7,7 @@ import Modal from '@/components/Modal';
 import ProductSelector from '@/components/ProductSelector';
 import JsonHighlight from '@/components/JsonHighlight';
 import CodeEditor from '@uiw/react-textarea-code-editor';
+import SettingsToggle from '@/components/SettingsToggle';
 import { PRODUCTS_ARRAY, PRODUCT_CONFIGS, getProductConfigById } from '@/lib/productConfig';
 
 export default function Home() {
@@ -34,6 +35,16 @@ export default function Home() {
   const [isEditingConfig, setIsEditingConfig] = useState(false);
   const [editedConfig, setEditedConfig] = useState('');
   const [configError, setConfigError] = useState<string | null>(null);
+  
+  // Settings/Configuration state
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [zapMode, setZapMode] = useState(false);
+  const [embeddedMode, setEmbeddedMode] = useState(false);
+  const [layerMode, setLayerMode] = useState(false);
+  const [tempZapMode, setTempZapMode] = useState(false);
+  const [tempEmbeddedMode, setTempEmbeddedMode] = useState(false);
+  const [tempLayerMode, setTempLayerMode] = useState(false);
+  const hasCustomSettings = zapMode || embeddedMode || layerMode;
 
   // Don't fetch link token on mount - wait for product selection
   // useEffect removed - link token fetched after product selection
@@ -287,6 +298,61 @@ export default function Home() {
       }
     } catch (error: any) {
       setConfigError(`Invalid JSON: ${error.message}`);
+    }
+  };
+
+  // Settings Modal Handlers
+  const handleOpenSettings = () => {
+    // Copy current settings to temp state
+    setTempZapMode(zapMode);
+    setTempEmbeddedMode(embeddedMode);
+    setTempLayerMode(layerMode);
+    // Hide product modal and show settings modal
+    setShowProductModal(false);
+    setShowChildModal(false);
+    setShowSettingsModal(true);
+  };
+
+  const handleCancelSettings = () => {
+    // Discard changes and close settings modal
+    setShowSettingsModal(false);
+    // Restore the appropriate product modal
+    if (selectedProduct && PRODUCT_CONFIGS[selectedProduct]?.children && selectedChildProduct) {
+      setShowChildModal(true);
+    } else {
+      setShowProductModal(true);
+    }
+  };
+
+  const handleSaveSettings = () => {
+    // Commit temp state to main state
+    setZapMode(tempZapMode);
+    setEmbeddedMode(tempEmbeddedMode);
+    setLayerMode(tempLayerMode);
+    // Close settings modal and restore product modal
+    setShowSettingsModal(false);
+    if (selectedProduct && PRODUCT_CONFIGS[selectedProduct]?.children && selectedChildProduct) {
+      setShowChildModal(true);
+    } else {
+      setShowProductModal(true);
+    }
+  };
+
+  const handleToggleZap = () => {
+    setTempZapMode(!tempZapMode);
+  };
+
+  const handleToggleEmbedded = () => {
+    // Disabled for now, but handler exists
+    if (!true) { // Will enable later
+      setTempEmbeddedMode(!tempEmbeddedMode);
+    }
+  };
+
+  const handleToggleLayer = () => {
+    // Disabled for now, but handler exists
+    if (!true) { // Will enable later
+      setTempLayerMode(!tempLayerMode);
     }
   };
 
@@ -912,7 +978,9 @@ export default function Home() {
       <Modal isVisible={showProductModal}>
         <ProductSelector 
           products={PRODUCTS_ARRAY} 
-          onSelect={handleProductSelect} 
+          onSelect={handleProductSelect}
+          onSettingsClick={handleOpenSettings}
+          hasCustomSettings={hasCustomSettings}
         />
       </Modal>
       <Modal isVisible={showChildModal}>
@@ -925,8 +993,45 @@ export default function Home() {
               setShowProductModal(true);
             }}
             showBackButton={true}
+            onSettingsClick={handleOpenSettings}
+            hasCustomSettings={hasCustomSettings}
           />
         )}
+      </Modal>
+      <Modal isVisible={showSettingsModal}>
+        <div className="settings-modal">
+          <div className="settings-header">
+            <h2>Advanced Settings</h2>
+          </div>
+          <div className="settings-grid">
+            <SettingsToggle 
+              label="Zap Mode" 
+              checked={tempZapMode} 
+              onChange={handleToggleZap} 
+              disabled={false} 
+            />
+            <SettingsToggle 
+              label="Embedded Mode" 
+              checked={tempEmbeddedMode} 
+              onChange={handleToggleEmbedded} 
+              disabled={true} 
+            />
+            <SettingsToggle 
+              label="Layer" 
+              checked={tempLayerMode} 
+              onChange={handleToggleLayer} 
+              disabled={true} 
+            />
+          </div>
+          <div className="button-row">
+            <button className="action-button button-red" onClick={handleCancelSettings}>
+              Cancel
+            </button>
+            <button className="action-button button-blue" onClick={handleSaveSettings}>
+              Save
+            </button>
+          </div>
+        </div>
       </Modal>
       <Modal isVisible={showModal && !(showEventLogs && (modalState === 'callback-success' || modalState === 'callback-exit'))}>
         {renderModalContent()}
