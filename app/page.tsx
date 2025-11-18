@@ -20,7 +20,7 @@ export default function Home() {
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
   const [selectedChildProduct, setSelectedChildProduct] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [modalState, setModalState] = useState<'loading' | 'preview-config' | 'callback-success' | 'callback-exit' | 'accounts-data' | 'processing-accounts' | 'processing-product' | 'success' | 'error'>('loading');
+  const [modalState, setModalState] = useState<'loading' | 'preview-config' | 'callback-success' | 'callback-exit' | 'callback-exit-zap' | 'accounts-data' | 'processing-accounts' | 'processing-product' | 'success' | 'error' | 'zap-mode-results' | 'tidying-up'>('loading');
   const [accountsData, setAccountsData] = useState<any>(null);
   const [productData, setProductData] = useState<any>(null);
   const [callbackData, setCallbackData] = useState<any>(null);
@@ -45,6 +45,7 @@ export default function Home() {
   const [tempEmbeddedMode, setTempEmbeddedMode] = useState(false);
   const [tempLayerMode, setTempLayerMode] = useState(false);
   const hasCustomSettings = zapMode || embeddedMode || layerMode;
+  const [showZapResetButton, setShowZapResetButton] = useState(false);
 
   // Don't fetch link token on mount - wait for product selection
   // useEffect removed - link token fetched after product selection
@@ -176,22 +177,30 @@ export default function Home() {
     }
 
     setLinkTokenConfig(fullConfig);
-    setModalState('preview-config');
-    setShowModal(true);
+    
+    // In Zap Mode, bypass the preview modal and go straight to opening Link
+    if (zapMode) {
+      handleProceedWithConfig(fullConfig); // Pass config directly to avoid state timing issues
+    } else {
+      setModalState('preview-config');
+      setShowModal(true);
+    }
   };
 
-  const handleProceedWithConfig = async () => {
+  const handleProceedWithConfig = async (configOverride?: any) => {
     // User approved the config, now fetch the link token using the (potentially edited) linkTokenConfig
+    // In Zap Mode, configOverride is passed directly to avoid state timing issues
     setShowModal(false);
     
     try {
-      // Use the linkTokenConfig state which may have been edited by the user
+      // Use the configOverride if provided (Zap Mode), otherwise use linkTokenConfig state
+      const configToUse = configOverride || linkTokenConfig;
       const response = await fetch('/api/create-link-token', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(linkTokenConfig),
+        body: JSON.stringify(configToUse),
       });
       const data = await response.json();
       setLinkToken(data.link_token);
@@ -356,20 +365,99 @@ export default function Home() {
     }
   };
 
-  const onSuccess = useCallback((public_token: string, metadata: any) => {
-    // Hide the button but keep event logs visible
-    setShowButton(false);
-    // Slide event logs to the left (Link's position)
-    setEventLogsPosition('left');
-    
-    // Show callback data modal
+  const handleZapModeSuccess = useCallback(async (public_token: string, metadata: any) => {
+    // Zap Mode: skip callback modal, go straight to API calls
+    setModalState('processing-accounts');
     setShowModal(true);
-    setModalState('callback-success');
-    setCallbackData({
-      public_token,
-      metadata
-    });
-  }, []);
+
+    try {
+      // Exchange public token for access token
+      const exchangeResponse = await fetch('/api/exchange-public-token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ public_token }),
+      });
+      
+      if (!exchangeResponse.ok) {
+        throw new Error('Failed to exchange token');
+      }
+
+      const { access_token } = await exchangeResponse.json();
+      setAccessToken(access_token);
+
+      // Get accounts data
+      const accountsResponse = await fetch('/api/accounts-get', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ access_token }),
+      });
+
+      const accountsData = await accountsResponse.json();
+      setAccountsData(accountsData);
+      setApiStatusCode(accountsResponse.status);
+
+      // Update loading message for product call
+      setModalState('processing-product');
+
+      // Get the effective product ID (child if selected, otherwise parent)
+      const effectiveProductId = selectedChildProduct || selectedProduct;
+      const productConfig = getProductConfigById(effectiveProductId!);
+      
+      if (!productConfig || !productConfig.apiEndpoint) {
+        throw new Error('Product API endpoint not configured');
+      }
+
+      // Build request body with access token and any additional params
+      const requestBody: any = { access_token };
+      if (productConfig.additionalApiParams) {
+        Object.assign(requestBody, productConfig.additionalApiParams);
+      }
+      
+      const productResponse = await fetch(productConfig.apiEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      const productData = await productResponse.json();
+      setProductData(productData);
+      
+      // Show Zap Mode results (side-by-side modals)
+      setModalState('zap-mode-results');
+      setShowModal(false); // Hide main modal overlay
+      setShowZapResetButton(true);
+    } catch (error) {
+      console.error('Error in Zap Mode success flow:', error);
+      setErrorMessage('We encountered an issue. Please try again.');
+      setModalState('error');
+      setShowModal(true);
+    }
+  }, [selectedProduct, selectedChildProduct]);
+
+  const onSuccess = useCallback((public_token: string, metadata: any) => {
+    // Hide the button
+    setShowButton(false);
+    
+    if (zapMode) {
+      // Zap Mode: skip callback modal, go directly to API calls
+      handleZapModeSuccess(public_token, metadata);
+    } else {
+      // Default mode: slide event logs to the left and show callback modal
+      setEventLogsPosition('left');
+      setShowModal(true);
+      setModalState('callback-success');
+      setCallbackData({
+        public_token,
+        metadata
+      });
+    }
+  }, [zapMode, handleZapModeSuccess]);
 
   const handleProceedWithSuccess = async () => {
     // Start fade-out animation for both modals
@@ -496,19 +584,22 @@ export default function Home() {
   };
 
   const onExit = useCallback((err: any, metadata: any) => {
-    // Hide button but keep event logs visible
+    // Hide button
     setShowButton(false);
-    // Slide event logs to the left (Link's position)
-    setEventLogsPosition('left');
+    
+    if (!zapMode) {
+      // Default mode: slide event logs to the left (Link's position)
+      setEventLogsPosition('left');
+    }
     
     // Show callback data modal for exit
     setShowModal(true);
-    setModalState('callback-exit');
+    setModalState(zapMode ? 'callback-exit-zap' : 'callback-exit');
     setCallbackData({
       err: err || null,
       metadata
     });
-  }, []);
+  }, [zapMode]);
 
   const onEvent = useCallback((eventName: string, metadata: any) => {
     // Add event to the logs
@@ -557,14 +648,16 @@ export default function Home() {
 
   // Auto-open Link when ready after product selection
   useEffect(() => {
-    if (ready && linkToken && (selectedProduct || selectedChildProduct) && !showModal && !showChildModal && !showProductModal) {
-      // Clear previous events and show event logs
+    if (ready && linkToken && (selectedProduct || selectedChildProduct) && !showModal && !showChildModal && !showProductModal && !showZapResetButton) {
+      // Clear previous events and show event logs (unless in Zap Mode)
       setLinkEvents([]);
-      setShowEventLogs(true);
+      if (!zapMode) {
+        setShowEventLogs(true);
+      }
       setShowProductModal(false); // Ensure product modal is hidden
       open();
     }
-  }, [ready, linkToken, selectedProduct, selectedChildProduct, showModal, showChildModal, showProductModal, open]);
+  }, [ready, linkToken, selectedProduct, selectedChildProduct, showModal, showChildModal, showProductModal, showZapResetButton, zapMode, open]);
 
   const handleButtonClick = () => {
     // Show product selection modal instead of opening Link directly
@@ -575,6 +668,10 @@ export default function Home() {
   const handleStartOver = async () => {
     // Clean up Plaid item if access token exists
     if (accessToken) {
+      // Show tidying up message
+      setModalState('tidying-up');
+      setShowModal(true);
+      
       try {
         await fetch('/api/item-remove', {
           method: 'POST',
@@ -600,6 +697,45 @@ export default function Home() {
     setLinkToken(null);
     setLinkEvents([]);
     setShowEventLogs(false);
+    setModalState('loading');
+    setShowButton(false);
+    setShowWelcome(false);
+    setShowProductModal(true);
+  };
+
+  const handleZapReset = async () => {
+    // Zap Mode reset: clean up and return to product selection
+    if (accessToken) {
+      // Show tidying up message
+      setModalState('tidying-up');
+      setShowModal(true);
+      setShowZapResetButton(false);
+      
+      try {
+        await fetch('/api/item-remove', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ access_token: accessToken }),
+        });
+      } catch (error) {
+        console.error('Error removing item:', error);
+      }
+    }
+
+    // Reset to product selection
+    setShowModal(false);
+    setAccountsData(null);
+    setProductData(null);
+    setCallbackData(null);
+    setAccessToken(null);
+    setSelectedProduct(null);
+    setSelectedChildProduct(null);
+    setLinkToken(null);
+    setLinkEvents([]);
+    setShowEventLogs(false);
+    setShowZapResetButton(false);
     setModalState('loading');
     setShowButton(false);
     setShowWelcome(false);
@@ -791,7 +927,7 @@ export default function Home() {
               <button className="action-button button-purple" onClick={handleCopyConfig}>
                 Copy Config
               </button>
-              <button className="action-button button-blue" onClick={handleProceedWithConfig}>
+              <button className="action-button button-blue" onClick={() => handleProceedWithConfig()}>
                 Looks good, proceed!
               </button>
             </div>
@@ -830,7 +966,7 @@ export default function Home() {
               Copy Callback
             </button>
             <button className="action-button button-blue" onClick={handleProceedWithSuccess}>
-              Don't stop me now →
+              Don't stop me now
             </button>
           </div>
         </div>
@@ -851,6 +987,25 @@ export default function Home() {
             <button className="action-button button-purple" onClick={handleCopyCallback}>
               Copy Callback
             </button>
+            <button className="action-button button-red" onClick={handleExitRetry}>
+              Try again?
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    if (modalState === 'callback-exit-zap' && callbackData) {
+      return (
+        <div className="modal-callback">
+          <div className="callback-header">
+            <div className="callback-icon exit-callback">✕</div>
+            <h2>onExit Callback Fired</h2>
+          </div>
+          <div className="account-data">
+            <JsonHighlight data={callbackData} />
+          </div>
+          <div className="button-row">
             <button className="action-button button-red" onClick={handleExitRetry}>
               Try again?
             </button>
@@ -884,7 +1039,7 @@ export default function Home() {
               Copy Access Token
             </button>
             <button className="action-button button-blue" onClick={handleCallProduct}>
-              Call {productName} →
+              Call {productName}
             </button>
           </div>
         </div>
@@ -909,6 +1064,15 @@ export default function Home() {
         <div className="modal-loading">
           <div className="spinner"></div>
           <p>Fetching {productName} data...</p>
+        </div>
+      );
+    }
+
+    if (modalState === 'tidying-up') {
+      return (
+        <div className="modal-loading">
+          <div className="spinner"></div>
+          <p>Tidying up</p>
         </div>
       );
     }
@@ -948,7 +1112,7 @@ export default function Home() {
               Copy Access Token
             </button>
             <button className="action-button button-blue" onClick={handleStartOver}>
-              Start Over
+              One More Time
             </button>
           </div>
         </div>
@@ -1005,7 +1169,7 @@ export default function Home() {
           </div>
           <div className="settings-grid">
             <SettingsToggle 
-              label="Zap Mode" 
+              label="⚡️ Mode" 
               checked={tempZapMode} 
               onChange={handleToggleZap} 
               disabled={false} 
@@ -1077,6 +1241,54 @@ export default function Home() {
         <div className={`callback-modal-container ${isTransitioningModals ? 'fading-out' : ''}`}>
           {renderModalContent()}
         </div>
+      )}
+
+      {/* Zap Mode Results - Side by side display of accounts and product data */}
+      {modalState === 'zap-mode-results' && accountsData && productData && (
+        <>
+          <div className="zap-results-left">
+            <div className="modal-success">
+              <div className="success-header">
+              <div className="success-icon">✓</div>
+                <h2>/accounts/get Response</h2>
+                <span className={`status-badge ${apiStatusCode < 400 ? 'status-success' : 'status-error'}`}>
+                  {apiStatusCode}
+                </span>
+              </div>
+              <div className="account-data">
+                <JsonHighlight data={accountsData} />
+              </div>
+            </div>
+          </div>
+          
+          <div className="zap-results-right">
+            <div className="modal-success">
+              <div className="success-header">
+                <div className="success-icon">✓</div>
+                <h2>
+                      {(() => {
+                        const effectiveProductId = selectedChildProduct || selectedProduct;
+                        const productConfig = getProductConfigById(effectiveProductId!);
+                        return productConfig?.apiTitle || productConfig?.name || 'Product API';
+                      })()} Response
+                </h2>
+                <span className={`status-badge ${apiStatusCode < 400 ? 'status-success' : 'status-error'}`}>
+                  {apiStatusCode}
+                </span>
+              </div>
+              <div className="account-data">
+                <JsonHighlight data={productData} />
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Zap Mode Reset Button */}
+      {showZapResetButton && (
+        <button className="zap-reset-button" onClick={handleZapReset}>
+          Woah. Do That Again
+        </button>
       )}
     </div>
   );
