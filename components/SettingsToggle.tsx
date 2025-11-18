@@ -11,6 +11,7 @@ export default function SettingsToggle({ label, checked, onChange, disabled }: S
       className="settings-toggle-row" 
       onClick={disabled ? undefined : onChange}
       style={{ cursor: disabled ? 'not-allowed' : 'pointer' }}
+      data-tooltip={disabled ? 'Not quite yet' : undefined}
     >
       <div className={`settings-toggle ${checked ? 'checked' : ''} ${disabled ? 'disabled' : ''}`}>
         <div className="settings-toggle-track">

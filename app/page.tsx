@@ -387,25 +387,30 @@ export default function Home() {
       const { access_token } = await exchangeResponse.json();
       setAccessToken(access_token);
 
-      // Get accounts data
-      const accountsResponse = await fetch('/api/accounts-get', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ access_token }),
-      });
-
-      const accountsData = await accountsResponse.json();
-      setAccountsData(accountsData);
-      setApiStatusCode(accountsResponse.status);
-
-      // Update loading message for product call
-      setModalState('processing-product');
-
       // Get the effective product ID (child if selected, otherwise parent)
       const effectiveProductId = selectedChildProduct || selectedProduct;
       const productConfig = getProductConfigById(effectiveProductId!);
+
+      // Skip accounts/get for Signal Balance
+      const skipAccountsGet = effectiveProductId === 'signal-balance';
+
+      if (!skipAccountsGet) {
+        // Get accounts data
+        const accountsResponse = await fetch('/api/accounts-get', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ access_token }),
+        });
+
+        const accountsData = await accountsResponse.json();
+        setAccountsData(accountsData);
+        setApiStatusCode(accountsResponse.status);
+      }
+
+      // Update loading message for product call
+      setModalState('processing-product');
       
       if (!productConfig || !productConfig.apiEndpoint) {
         throw new Error('Product API endpoint not configured');
@@ -497,21 +502,55 @@ export default function Home() {
       // Store access token for cleanup
       setAccessToken(access_token);
 
-      // Get accounts data
-      const accountsResponse = await fetch('/api/accounts-get', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ access_token }),
-      });
+      // Get the effective product ID to check if we should skip accounts/get
+      const effectiveProductId = selectedChildProduct || selectedProduct;
+      const skipAccountsGet = effectiveProductId === 'signal-balance';
 
-      const accountsData = await accountsResponse.json();
-      
-      // Update state to show accounts data (even if error)
-      setAccountsData(accountsData);
-      setApiStatusCode(accountsResponse.status);
-      setModalState('accounts-data');
+      if (skipAccountsGet) {
+        // Skip accounts/get for Signal Balance and go directly to product API
+        setModalState('processing-product');
+        
+        const productConfig = getProductConfigById(effectiveProductId!);
+        
+        if (!productConfig || !productConfig.apiEndpoint) {
+          throw new Error('Product API endpoint not configured');
+        }
+
+        // Build request body with access token and any additional params
+        const requestBody: any = { access_token };
+        if (productConfig.additionalApiParams) {
+          Object.assign(requestBody, productConfig.additionalApiParams);
+        }
+        
+        const productResponse = await fetch(productConfig.apiEndpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+        });
+
+        const productData = await productResponse.json();
+        setProductData(productData);
+        setApiStatusCode(productResponse.status);
+        setModalState('success');
+      } else {
+        // Get accounts data
+        const accountsResponse = await fetch('/api/accounts-get', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ access_token }),
+        });
+
+        const accountsData = await accountsResponse.json();
+        
+        // Update state to show accounts data (even if error)
+        setAccountsData(accountsData);
+        setApiStatusCode(accountsResponse.status);
+        setModalState('accounts-data');
+      }
     } catch (error) {
       console.error('Error processing account:', error);
       setErrorMessage('We encountered an issue connecting your account. Please try again.');
@@ -1102,7 +1141,7 @@ export default function Home() {
             </span>
           </div>
           <div className="account-data">
-            <JsonHighlight data={productData} />
+            <JsonHighlight data={productData} highlightKeys={productConfig?.highlightKeys} />
           </div>
           <div className="button-row">
             <button className="action-button button-purple" onClick={handleCopyResponse}>
@@ -1159,6 +1198,7 @@ export default function Home() {
             showBackButton={true}
             onSettingsClick={handleOpenSettings}
             hasCustomSettings={hasCustomSettings}
+            title={PRODUCT_CONFIGS[selectedProduct].name}
           />
         )}
       </Modal>
@@ -1244,29 +1284,31 @@ export default function Home() {
       )}
 
       {/* Zap Mode Results - Side by side display of accounts and product data */}
-      {modalState === 'zap-mode-results' && accountsData && productData && (
+      {modalState === 'zap-mode-results' && productData && (
         <>
-          <div className="zap-results-left">
-            <div className="modal-success">
-              <div className="success-header">
-              <div className="success-icon">✓</div>
-                <h2>/accounts/get Response</h2>
-                <span className={`status-badge ${apiStatusCode < 400 ? 'status-success' : 'status-error'}`}>
-                  {apiStatusCode}
-                </span>
-              </div>
-              <div className="account-data">
-                <JsonHighlight data={accountsData} />
+          {accountsData && (
+            <div className="zap-results-left">
+              <div className="modal-success">
+                <div className="success-header">
+                <div className="success-icon">✓</div>
+                  <h2>/accounts/get Response</h2>
+                  <span className={`status-badge ${apiStatusCode < 400 ? 'status-success' : 'status-error'}`}>
+                    {apiStatusCode}
+                  </span>
+                </div>
+                <div className="account-data">
+                  <JsonHighlight data={accountsData} />
+                </div>
               </div>
             </div>
-          </div>
+          )}
           
-          <div className="zap-results-right">
+          <div className={accountsData ? "zap-results-right" : "zap-results-center"}>
             <div className="modal-success">
               <div className="success-header">
                 <div className="success-icon">✓</div>
                 <h2>
-                      {(() => {
+                  {(() => {
                         const effectiveProductId = selectedChildProduct || selectedProduct;
                         const productConfig = getProductConfigById(effectiveProductId!);
                         return productConfig?.apiTitle || productConfig?.name || 'Product API';
@@ -1277,7 +1319,14 @@ export default function Home() {
                 </span>
               </div>
               <div className="account-data">
-                <JsonHighlight data={productData} />
+                <JsonHighlight 
+                  data={productData} 
+                  highlightKeys={(() => {
+                    const effectiveProductId = selectedChildProduct || selectedProduct;
+                    const productConfig = getProductConfigById(effectiveProductId!);
+                    return productConfig?.highlightKeys;
+                  })()}
+                />
               </div>
             </div>
           </div>
@@ -1287,7 +1336,7 @@ export default function Home() {
       {/* Zap Mode Reset Button */}
       {showZapResetButton && (
         <button className="zap-reset-button" onClick={handleZapReset}>
-          Woah. Do That Again
+          Woah. Do That Again.
         </button>
       )}
     </div>

@@ -2,19 +2,20 @@ import { useMemo, useRef } from 'react';
 
 interface JsonHighlightProps {
   data: any;
+  highlightKeys?: string[];
 }
 
 // Generate unique ID for each component instance
 let instanceCounter = 0;
 
-export default function JsonHighlight({ data }: JsonHighlightProps) {
+export default function JsonHighlight({ data, highlightKeys = [] }: JsonHighlightProps) {
   // Generate a unique ID for this component instance
   const instanceId = useMemo(() => `json-${++instanceCounter}`, []);
   
   // Use a counter to ensure every element gets a unique key
   const keyCounter = useRef(0);
   
-  const formatJson = (obj: any, indent = 0): JSX.Element[] => {
+  const formatJson = (obj: any, indent = 0, parentKey?: string): JSX.Element[] => {
     const elements: JSX.Element[] = [];
     const spaces = '  '.repeat(indent);
 
@@ -94,17 +95,31 @@ export default function JsonHighlight({ data }: JsonHighlightProps) {
       );
 
       keys.forEach((key, index) => {
-        elements.push(
+        const shouldHighlight = highlightKeys.includes(key);
+        const lineElements: JSX.Element[] = [];
+        
+        lineElements.push(
           <span key={`${instanceId}-${keyCounter.current++}`}>{spaces}  </span>,
           <span key={`${instanceId}-${keyCounter.current++}`} className="json-key">&quot;{key}&quot;</span>,
           <span key={`${instanceId}-${keyCounter.current++}`} className="json-punctuation">: </span>
         );
-        elements.push(...formatJson(obj[key], indent + 1));
+        lineElements.push(...formatJson(obj[key], indent + 1, key));
         if (index < keys.length - 1) {
-          elements.push(
+          lineElements.push(
             <span key={`${instanceId}-${keyCounter.current++}`} className="json-punctuation">,</span>
           );
         }
+        
+        if (shouldHighlight) {
+          elements.push(
+            <span key={`${instanceId}-${keyCounter.current++}`} className="json-highlight">
+              {lineElements}
+            </span>
+          );
+        } else {
+          elements.push(...lineElements);
+        }
+        
         elements.push(<br key={`${instanceId}-${keyCounter.current++}`} />);
       });
 
@@ -127,4 +142,6 @@ export default function JsonHighlight({ data }: JsonHighlightProps) {
     </pre>
   );
 }
+
+
 

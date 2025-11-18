@@ -1,6 +1,7 @@
 export interface ProductConfig {
   id: string;
   name: string;
+  shortName?: string;
   products: string[];
   required_if_supported: string[];
   gradient: string;
@@ -9,6 +10,8 @@ export interface ProductConfig {
   children?: ProductConfig[];
   additionalLinkParams?: Record<string, any>;
   additionalApiParams?: Record<string, any>;
+  highlightKeys?: string[];
+  icon?: string;
 }
 
 export const PRODUCT_CONFIGS: Record<string, ProductConfig> = {
@@ -19,30 +22,38 @@ export const PRODUCT_CONFIGS: Record<string, ProductConfig> = {
     required_if_supported: ['identity'],
     gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
     apiEndpoint: '/api/auth-get',
-    apiTitle: '/auth/get'
+    apiTitle: '/auth/get',
+    highlightKeys: ['numbers'],
+    icon: '/icons/auth.png'
   },
   identity: {
     id: 'identity',
     name: 'Identity',
     products: ['identity'],
     required_if_supported: [],
-    gradient: 'linear-gradient(135deg, #3d9991 0%, #2d6b66 100%)',
+    gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
+    icon: '/icons/identity.png',
     children: [
       {
         id: 'identity-get',
         name: 'Identity Get',
+        shortName: 'Get',
         products: ['identity'],
         required_if_supported: [],
-        gradient: 'linear-gradient(135deg, #3d9991 0%, #2d6b66 100%)',
+        gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
+        icon: '/icons/identity.png',
         apiEndpoint: '/api/identity-get',
-        apiTitle: '/identity/get'
+        apiTitle: '/identity/get',
+        highlightKeys: ['owners']
       },
       {
         id: 'identity-match',
         name: 'Identity Match',
+        shortName: 'Match',
         products: ['identity'],
         required_if_supported: [],
-        gradient: 'linear-gradient(135deg, #4aaa9f 0%, #327a73 100%)',
+        gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
+        icon: '/icons/identity.png',
         apiEndpoint: '/api/identity-match',
         apiTitle: '/identity/match',
         additionalApiParams: {
@@ -58,7 +69,8 @@ export const PRODUCT_CONFIGS: Record<string, ProductConfig> = {
               country: 'US'
             }
           }
-        }
+        },
+        highlightKeys: ['legal_name', 'phone_number', 'email_address', 'address']
       }
     ]
   },
@@ -67,14 +79,17 @@ export const PRODUCT_CONFIGS: Record<string, ProductConfig> = {
     name: 'Transactions',
     products: ['transactions'],
     required_if_supported: [],
-    gradient: 'linear-gradient(135deg, #3b8fd1 0%, #00b8c4 100%)',
+    gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
+    icon: '/icons/transactions.png',
     children: [
       {
         id: 'transactions-get',
         name: 'Transactions Get',
+        shortName: 'Get',
         products: ['transactions'],
         required_if_supported: [],
-        gradient: 'linear-gradient(135deg, #3b8fd1 0%, #00b8c4 100%)',
+        gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
+        icon: '/icons/transactions.png',
         apiEndpoint: '/api/transactions-get',
         apiTitle: '/transactions/get',
         additionalApiParams: {
@@ -85,9 +100,11 @@ export const PRODUCT_CONFIGS: Record<string, ProductConfig> = {
       {
         id: 'transactions-sync',
         name: 'Transactions Sync',
+        shortName: 'Sync',
         products: ['transactions'],
         required_if_supported: [],
-        gradient: 'linear-gradient(135deg, #4facfe 0%, #00d4d8 100%)',
+        gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
+        icon: '/icons/transactions.png',
         apiEndpoint: '/api/transactions-sync',
         apiTitle: '/transactions/sync',
         additionalLinkParams: {
@@ -101,14 +118,17 @@ export const PRODUCT_CONFIGS: Record<string, ProductConfig> = {
     name: 'Signal',
     products: ['signal'],
     required_if_supported: [],
-    gradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+    gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
+    icon: '/icons/signal.png',
     children: [
       {
         id: 'signal-evaluate',
         name: 'Signal Evaluate',
+        shortName: 'Evaluate',
         products: ['signal'],
         required_if_supported: [],
-        gradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+        gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
+        icon: '/icons/signal.png',
         apiEndpoint: '/api/signal-evaluate',
         apiTitle: '/signal/evaluate',
         additionalApiParams: {
@@ -119,13 +139,64 @@ export const PRODUCT_CONFIGS: Record<string, ProductConfig> = {
       {
         id: 'signal-balance',
         name: 'Signal Balance',
+        shortName: 'Balance',
         products: ['signal'],
         required_if_supported: [],
-        gradient: 'linear-gradient(135deg, #fb923c 0%, #ea580c 100%)',
+        gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
+        icon: '/icons/balance.png',
         apiEndpoint: '/api/signal-balance',
-        apiTitle: '/accounts/balance/get'
+        apiTitle: '/accounts/balance/get',
+        highlightKeys: ['balances']
       }
     ]
+  },
+  investments: {
+    id: 'investments',
+    name: 'Investments',
+    products: ['investments'],
+    required_if_supported: [],
+    gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
+    icon: '/icons/investments.png',
+    children: [
+      {
+        id: 'investments-holdings',
+        name: 'Investments Holdings',
+        shortName: 'Holdings',
+        products: ['investments'],
+        required_if_supported: [],
+        gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
+        icon: '/icons/investments.png',
+        apiEndpoint: '/api/investments-holdings-get',
+        apiTitle: '/investments/holdings/get',
+        highlightKeys: ['holdings']
+      },
+      {
+        id: 'investments-transactions',
+        name: 'Investments Transactions',
+        shortName: 'Transactions',
+        products: ['investments'],
+        required_if_supported: [],
+        gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
+        icon: '/icons/investments.png',
+        apiEndpoint: '/api/investments-transactions-get',
+        apiTitle: '/investments/transactions/get',
+        additionalApiParams: {
+          start_date: '2025-01-01',
+          end_date: '2025-05-31'
+        }
+      }
+    ]
+  },
+  liabilities: {
+    id: 'liabilities',
+    name: 'Liabilities',
+    products: ['liabilities'],
+    required_if_supported: [],
+    gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
+    apiEndpoint: '/api/liabilities-get',
+    apiTitle: '/liabilities/get',
+    highlightKeys: ['liabilities'],
+    icon: '/icons/liabilities.png'
   }
 };
 

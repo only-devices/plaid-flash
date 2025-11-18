@@ -8,6 +8,7 @@ interface ProductSelectorProps {
   showBackButton?: boolean;
   onSettingsClick?: () => void;
   hasCustomSettings?: boolean;
+  title?: string;
 }
 
 const ProductSelector: React.FC<ProductSelectorProps> = ({ 
@@ -16,7 +17,8 @@ const ProductSelector: React.FC<ProductSelectorProps> = ({
   onBack, 
   showBackButton,
   onSettingsClick,
-  hasCustomSettings = false
+  hasCustomSettings = false,
+  title = 'Choose Your Own Adventure'
 }) => {
   return (
     <div className="product-selector">
@@ -40,16 +42,21 @@ const ProductSelector: React.FC<ProductSelectorProps> = ({
           )}
         </button>
       )}
-      <h2 className="product-selector-title">Choose Your Own Adventure</h2>
+      <h2 className="product-selector-title">{title}</h2>
       <p className="product-selector-subtitle"></p>
       <div className="product-grid">
         {products.map((product) => (
           <button
             key={product.id}
-            className="product-card"
+            className={`product-card ${product.icon ? 'has-icon' : ''}`}
             onClick={() => onSelect(product.id)}
             style={{ background: product.gradient }}
           >
+            {product.icon && (
+              <div className="product-card-icon">
+                <img src={product.icon} alt={`${product.name} icon`} />
+              </div>
+            )}
             <div className="product-card-arrow">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <g transform="rotate(45 12 12)">
@@ -57,7 +64,7 @@ const ProductSelector: React.FC<ProductSelectorProps> = ({
               </g>
             </svg>
             </div>
-            <h3 className="product-card-name">{product.name}</h3>
+            <h3 className="product-card-name">{product.shortName || product.name}</h3>
           </button>
         ))}
       </div>
