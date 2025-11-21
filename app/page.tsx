@@ -9,6 +9,7 @@ import JsonHighlight from '@/components/JsonHighlight';
 import CodeEditor from '@uiw/react-textarea-code-editor';
 import SettingsToggle from '@/components/SettingsToggle';
 import { PRODUCTS_ARRAY, PRODUCT_CONFIGS, getProductConfigById } from '@/lib/productConfig';
+import { isMobileDevice } from '@/utils/deviceDetection';
 
 export default function Home() {
   const [linkToken, setLinkToken] = useState<string | null>(null);
@@ -46,9 +47,21 @@ export default function Home() {
   const [tempLayerMode, setTempLayerMode] = useState(false);
   const hasCustomSettings = zapMode || embeddedMode || layerMode;
   const [showZapResetButton, setShowZapResetButton] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [eventLogsCopied, setEventLogsCopied] = useState(false);
 
   // Don't fetch link token on mount - wait for product selection
   // useEffect removed - link token fetched after product selection
+
+  // Mobile device detection - auto-enable Zap mode on mobile
+  useEffect(() => {
+    const mobile = isMobileDevice();
+    setIsMobile(mobile);
+    if (mobile) {
+      setZapMode(true);
+      setTempZapMode(true);
+    }
+  }, []); // Run once on mount
 
   // Welcome animation sequence
   useEffect(() => {
@@ -391,8 +404,8 @@ export default function Home() {
       const effectiveProductId = selectedChildProduct || selectedProduct;
       const productConfig = getProductConfigById(effectiveProductId!);
 
-      // Skip accounts/get for Signal Balance
-      const skipAccountsGet = effectiveProductId === 'signal-balance';
+      // Skip accounts/get for Signal Balance or when in mobile Zap mode
+      const skipAccountsGet = effectiveProductId === 'signal-balance' || isMobile;
 
       if (!skipAccountsGet) {
         // Get accounts data
@@ -443,7 +456,7 @@ export default function Home() {
       setModalState('error');
       setShowModal(true);
     }
-  }, [selectedProduct, selectedChildProduct]);
+  }, [selectedProduct, selectedChildProduct, isMobile]);
 
   const onSuccess = useCallback((public_token: string, metadata: any) => {
     // Hide the button
@@ -504,7 +517,7 @@ export default function Home() {
 
       // Get the effective product ID to check if we should skip accounts/get
       const effectiveProductId = selectedChildProduct || selectedProduct;
-      const skipAccountsGet = effectiveProductId === 'signal-balance';
+      const skipAccountsGet = effectiveProductId === 'signal-balance' || isMobile;
 
       if (skipAccountsGet) {
         // Skip accounts/get for Signal Balance and go directly to product API
@@ -781,127 +794,6 @@ export default function Home() {
     setShowProductModal(true);
   };
 
-  const handleCopyResponse = async () => {
-    if (productData) {
-      try {
-        await navigator.clipboard.writeText(JSON.stringify(productData, null, 2));
-        // Optional: Add visual feedback
-        const button = document.querySelector('.copy-response-button');
-        if (button) {
-          const originalText = button.textContent;
-          button.textContent = 'Copied!';
-          button.classList.add('copied');
-          setTimeout(() => {
-            button.textContent = originalText;
-            button.classList.remove('copied');
-          }, 2000);
-        }
-      } catch (error) {
-        console.error('Failed to copy:', error);
-      }
-    }
-  };
-
-  const handleCopyAccounts = async () => {
-    if (accountsData) {
-      try {
-        await navigator.clipboard.writeText(JSON.stringify(accountsData, null, 2));
-        // Add visual feedback
-        const button = document.querySelector('.copy-accounts-button');
-        if (button) {
-          const originalText = button.textContent;
-          button.textContent = 'Copied!';
-          button.classList.add('copied');
-          setTimeout(() => {
-            button.textContent = originalText;
-            button.classList.remove('copied');
-          }, 2000);
-        }
-      } catch (error) {
-        console.error('Failed to copy:', error);
-      }
-    }
-  };
-
-  const handleCopyCallback = async () => {
-    if (callbackData) {
-      try {
-        await navigator.clipboard.writeText(JSON.stringify(callbackData, null, 2));
-        // Add visual feedback
-        const button = document.querySelector('.copy-callback-button');
-        if (button) {
-          const originalText = button.textContent;
-          button.textContent = 'Copied!';
-          button.classList.add('copied');
-          setTimeout(() => {
-            button.textContent = originalText;
-            button.classList.remove('copied');
-          }, 2000);
-        }
-      } catch (error) {
-        console.error('Failed to copy:', error);
-      }
-    }
-  };
-
-  const handleCopyAccessToken = async (event: React.MouseEvent<HTMLButtonElement>) => {
-    if (accessToken) {
-      try {
-        await navigator.clipboard.writeText(accessToken);
-        // Add visual feedback
-        const button = event.currentTarget;
-        const originalText = button.textContent;
-        button.textContent = 'Copied!';
-        button.classList.add('copied');
-        setTimeout(() => {
-          button.textContent = originalText;
-          button.classList.remove('copied');
-        }, 2000);
-      } catch (error) {
-        console.error('Failed to copy:', error);
-      }
-    }
-  };
-
-  const handleCopyLogs = async () => {
-    if (linkEvents.length > 0) {
-      try {
-        await navigator.clipboard.writeText(JSON.stringify(linkEvents, null, 2));
-        // Add visual feedback
-        const button = document.querySelector('.copy-logs-button');
-        if (button) {
-          const originalText = button.textContent;
-          button.textContent = 'Copied!';
-          button.classList.add('copied');
-          setTimeout(() => {
-            button.textContent = originalText;
-            button.classList.remove('copied');
-          }, 2000);
-        }
-      } catch (error) {
-        console.error('Failed to copy:', error);
-      }
-    }
-  };
-
-  const handleCopyConfig = async (event: React.MouseEvent<HTMLButtonElement>) => {
-    if (linkTokenConfig) {
-      try {
-        await navigator.clipboard.writeText(JSON.stringify(linkTokenConfig, null, 2));
-        // Add visual feedback
-        const button = event.currentTarget;
-        const originalText = button.textContent;
-        button.textContent = 'Copied!';
-        button.classList.add('copied');
-        setTimeout(() => {
-          button.textContent = originalText;
-          button.classList.remove('copied');
-        }, 2000);
-      } catch (error) {
-        console.error('Failed to copy:', error);
-      }
-    }
-  };
 
   const renderModalContent = () => {
     if (modalState === 'preview-config' && linkTokenConfig) {
@@ -963,9 +855,6 @@ export default function Home() {
               <button className="action-button button-red" onClick={handleGoBackToProducts}>
                 Go back, I want to do something else
               </button>
-              <button className="action-button button-purple" onClick={handleCopyConfig}>
-                Copy Config
-              </button>
               <button className="action-button button-blue" onClick={() => handleProceedWithConfig()}>
                 Looks good, proceed!
               </button>
@@ -974,9 +863,6 @@ export default function Home() {
             <div className="button-row">
               <button className="action-button button-red" onClick={handleCancelEdit}>
                 Cancel
-              </button>
-              <button className="action-button button-purple" onClick={handleCopyConfig}>
-                Copy Config
               </button>
               <button className="action-button button-blue" onClick={handleSaveAndProceed}>
                 Save & Proceed
@@ -1001,9 +887,6 @@ export default function Home() {
             <JsonHighlight data={callbackData} />
           </div>
           <div className="button-row">
-            <button className="action-button button-purple" onClick={handleCopyCallback}>
-              Copy Callback
-            </button>
             <button className="action-button button-blue" onClick={handleProceedWithSuccess}>
               Don't stop me now
             </button>
@@ -1023,9 +906,6 @@ export default function Home() {
             <JsonHighlight data={callbackData} />
           </div>
           <div className="button-row">
-            <button className="action-button button-purple" onClick={handleCopyCallback}>
-              Copy Callback
-            </button>
             <button className="action-button button-red" onClick={handleExitRetry}>
               Try again?
             </button>
@@ -1071,12 +951,6 @@ export default function Home() {
             <JsonHighlight data={accountsData} />
           </div>
           <div className="button-row">
-            <button className="action-button button-purple" onClick={handleCopyAccounts}>
-              Copy Response
-            </button>
-            <button className="action-button button-green" onClick={handleCopyAccessToken}>
-              Copy Access Token
-            </button>
             <button className="action-button button-blue" onClick={handleCallProduct}>
               Call {productName}
             </button>
@@ -1144,14 +1018,8 @@ export default function Home() {
             <JsonHighlight data={productData} highlightKeys={productConfig?.highlightKeys} />
           </div>
           <div className="button-row">
-            <button className="action-button button-purple" onClick={handleCopyResponse}>
-              Copy Response
-            </button>
-            <button className="action-button button-green" onClick={handleCopyAccessToken}>
-              Copy Access Token
-            </button>
             <button className="action-button button-blue" onClick={handleStartOver}>
-              One More Time
+              Cool. Let's do it again.
             </button>
           </div>
         </div>
@@ -1212,7 +1080,8 @@ export default function Home() {
               label="⚡️ Mode" 
               checked={tempZapMode} 
               onChange={handleToggleZap} 
-              disabled={false} 
+              disabled={isMobile}
+              tooltip={isMobile ? "Not available for mobile. Switch to desktop for the full Flash experience!" : undefined}
             />
             <SettingsToggle 
               label="Embedded Mode" 
@@ -1248,30 +1117,52 @@ export default function Home() {
             <div className="success-header">
               <h2>🟢 onEvent Callbacks</h2>
             </div>
-            <div className="event-logs-scroll" ref={eventLogsRef}>
-              {linkEvents.length > 0 ? (
-                linkEvents.map((event, index) => (
-                  <div key={index} className={`event-log-item ${index % 2 === 0 ? 'even' : 'odd'}`}>
-                    <div className="event-log-content">
-                      <JsonHighlight data={event} />
+            <div className="event-logs-wrapper">
+              <button 
+                className={`event-logs-copy-button ${eventLogsCopied ? 'copied' : ''}`}
+                onClick={async () => {
+                  if (linkEvents.length > 0) {
+                    try {
+                      await navigator.clipboard.writeText(JSON.stringify(linkEvents, null, 2));
+                      setEventLogsCopied(true);
+                      setTimeout(() => setEventLogsCopied(false), 2000);
+                    } catch (err) {
+                      console.error('Failed to copy:', err);
+                    }
+                  }
+                }}
+                disabled={linkEvents.length === 0}
+                aria-label="Copy all event callbacks"
+              >
+                {eventLogsCopied ? (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                ) : (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                )}
+              </button>
+              <div className="event-logs-scroll" ref={eventLogsRef}>
+                {linkEvents.length > 0 ? (
+                  linkEvents.map((event, index) => (
+                    <div key={index} className={`event-log-item ${index % 2 === 0 ? 'even' : 'odd'}`}>
+                      <div className="event-log-content">
+                        <JsonHighlight data={event} showCopyButton={false} />
+                      </div>
                     </div>
+                  ))
+                ) : (
+                  <div className="event-log-placeholder">
+                    <pre className="code-block">
+                      <code>... waiting for events</code>
+                    </pre>
                   </div>
-                ))
-              ) : (
-                <div className="event-log-placeholder">
-                  <pre className="code-block">
-                    <code>... waiting for events</code>
-                  </pre>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-            <button 
-              className="copy-button copy-logs-button" 
-              onClick={handleCopyLogs}
-              disabled={linkEvents.length === 0}
-            >
-              Copy onEvent Callbacks
-            </button>
           </div>
         </div>
       </div>

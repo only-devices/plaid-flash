@@ -1,19 +1,30 @@
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
 
 interface JsonHighlightProps {
   data: any;
   highlightKeys?: string[];
+  onCopy?: () => void;
+  showCopyButton?: boolean;
 }
 
 // Generate unique ID for each component instance
 let instanceCounter = 0;
 
-export default function JsonHighlight({ data, highlightKeys = [] }: JsonHighlightProps) {
-  // Generate a unique ID for this component instance
+export default function JsonHighlight({ data, highlightKeys = [], onCopy, showCopyButton = true }: JsonHighlightProps) {
+  const [showCopied, setShowCopied] = useState(false);
   const instanceId = useMemo(() => `json-${++instanceCounter}`, []);
-  
-  // Use a counter to ensure every element gets a unique key
   const keyCounter = useRef(0);
+  
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+      setShowCopied(true);
+      if (onCopy) onCopy();
+      setTimeout(() => setShowCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
   
   const formatJson = (obj: any, indent = 0, parentKey?: string): JSX.Element[] => {
     const elements: JSX.Element[] = [];
@@ -133,15 +144,31 @@ export default function JsonHighlight({ data, highlightKeys = [] }: JsonHighligh
     return elements;
   };
 
-  // Reset counter before each render
   keyCounter.current = 0;
 
   return (
-    <pre className="code-block">
-      <code>{formatJson(data)}</code>
-    </pre>
+    <div className="json-container">
+      {showCopyButton && (
+        <button 
+          className={`json-copy-button ${showCopied ? 'copied' : ''}`}
+          onClick={handleCopy}
+          aria-label="Copy to clipboard"
+        >
+          {showCopied ? (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          ) : (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+          )}
+        </button>
+      )}
+      <pre className="code-block">
+        <code>{formatJson(data)}</code>
+      </pre>
+    </div>
   );
 }
-
-
-
