@@ -348,10 +348,16 @@ body {
 }
 
 /* Config Edit Icon */
+.config-data-with-edit {
+  position: relative;
+}
+
 .config-edit-icon {
-  position: absolute;
-  top: 0;
-  right: 0;
+  position: sticky;
+  top: 18px;
+  float: right;
+  margin-right: 12px;
+  margin-bottom: -36px;
   width: 40px;
   height: 40px;
   background: rgba(102, 126, 234, 0.2);
@@ -363,6 +369,7 @@ body {
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   color: #88c0d0;
+  z-index: 9;
 }
 
 .config-edit-icon:hover {
@@ -378,6 +385,14 @@ body {
 
 .config-edit-icon svg {
   display: block;
+}
+
+.config-close-icon {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  margin: 0;
+  float: none;
 }
 
 /* Code Editor Container */
@@ -410,7 +425,7 @@ body {
 }
 
 .status-badge {
-  padding: 6px 16px;
+  padding: 6px 14px;
   border-radius: 12px;
   font-size: 14px;
   font-weight: 600;
@@ -431,8 +446,8 @@ body {
 .account-data {
   margin: 24px 0;
   overflow-y: auto;
+  overflow-x: hidden;
   animation: fadeIn 0.7s ease-out 0.2s backwards;
-  position: relative;
 }
 
 /* Default modal account data */
@@ -461,7 +476,7 @@ body {
 
 .json-copy-button {
   position: sticky;
-  top: 12px;
+  top: 18px;
   float: right;
   margin-right: 12px;
   margin-bottom: -36px;
@@ -504,11 +519,213 @@ body {
   display: block;
 }
 
+/* Expandable Copy Menu */
+.json-copy-expandable {
+  position: sticky;
+  top: 18px;
+  float: right;
+  margin-right: 12px;
+  margin-bottom: -36px;
+  z-index: 10;
+  width: 48px;
+  height: 48px;
+}
+
+.json-copy-expandable::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: -100px;
+  right: -8px;
+  bottom: -8px;
+  z-index: -1;
+}
+
+.expandable-menu {
+  position: absolute;
+  right: 56px;
+  top: 24px;
+  display: flex;
+  gap: 8px;
+  opacity: 0;
+  visibility: hidden;
+  max-width: 0;
+  overflow: visible;
+  transform: translateX(50px);
+  transition: 
+    opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+    visibility 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+    max-width 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.json-copy-expandable.expanded .expandable-menu {
+  opacity: 1;
+  visibility: visible;
+  max-width: 240px;
+  transform: translateX(0);
+}
+
+.json-copy-expandable.sliding .expandable-menu {
+  transform: translateX(0px);
+}
+
+.expandable-pill-button {
+  background: rgba(102, 126, 234, 0.15);
+  border: 1px solid rgba(102, 126, 234, 0.3);
+  border-radius: 10px;
+  padding: 6px 16px;
+  cursor: pointer;
+  color: #88c0d0;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.expandable-pill-button:hover:not(:disabled) {
+  background: rgba(102, 126, 234, 0.25);
+  border-color: rgba(102, 126, 234, 0.5);
+  transform: scale(1.05);
+}
+
+.expandable-pill-button:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.expandable-pill-button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.json-copy-button.expandable-icon {
+  position: relative;
+  float: none;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+
+/* Modal Button Row - Inside modals */
+.modal-button-row {
+  display: flex;
+  gap: 16px;
+  animation: fadeIn 0.5s ease-out 0.3s backwards;
+}
+
+.modal-button-row.single-button {
+  justify-content: flex-end;
+}
+
+.modal-button-row.two-buttons {
+  justify-content: space-between;
+}
+
+/* Arrow Buttons */
+.arrow-button {
+  width: 56px;
+  height: 56px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.arrow-button:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
+}
+
+.arrow-button:active {
+  transform: translateY(-2px);
+}
+
+.arrow-button svg {
+  display: block;
+}
+
+.arrow-button-blue {
+  background: linear-gradient(135deg, #3b8fd1 0%, #00b8c4 100%);
+}
+
+.arrow-button-blue:hover {
+  box-shadow: 0 12px 24px rgba(59, 143, 209, 0.5);
+}
+
+.arrow-button-red {
+  background: linear-gradient(135deg, #c7659f 0%, #c43d52 100%);
+}
+
+.arrow-button-red:hover {
+  box-shadow: 0 12px 24px rgba(196, 61, 82, 0.5);
+}
+
+.arrow-button-purple {
+  background: linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%);
+}
+
+.arrow-button-purple:hover {
+  box-shadow: 0 12px 24px rgba(74, 95, 193, 0.5);
+}
+
+.arrow-button-green {
+  background: linear-gradient(135deg, #3d9991 0%, #2d6b66 100%);
+}
+
+.arrow-button-green:hover {
+  box-shadow: 0 12px 24px rgba(61, 153, 145, 0.5);
+}
+
+/* Settings Modal Buttons */
+.action-button {
+  flex: 1;
+  padding: 14px 20px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+.action-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+.action-button:active {
+  transform: translateY(0);
+}
+
+.button-blue {
+  background: linear-gradient(135deg, #3b8fd1 0%, #00b8c4 100%);
+}
+
+.button-blue:hover {
+  box-shadow: 0 8px 20px rgba(59, 143, 209, 0.4);
+}
+
+.button-red {
+  background: linear-gradient(135deg, #c7659f 0%, #c43d52 100%);
+}
+
+.button-red:hover {
+  box-shadow: 0 8px 20px rgba(196, 61, 82, 0.4);
+}
+
 .code-block {
   background: rgba(15, 15, 25, 0.8);
   border-radius: 12px;
   padding: 24px;
-  overflow-x: auto;
+  overflow-x: hidden;
   border: 1px solid rgba(102, 126, 234, 0.2);
   box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.3);
   clear: right;
@@ -551,6 +768,11 @@ body {
 .account-data::-webkit-scrollbar-thumb:hover,
 .code-block::-webkit-scrollbar-thumb:hover {
   background: rgba(102, 126, 234, 0.7);
+}
+
+.account-data::-webkit-scrollbar-corner,
+.code-block::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 /* JSON Syntax Highlighting - Nord-inspired */
@@ -645,199 +867,6 @@ body {
   animation: fadeIn 0.8s ease-out 0.4s backwards;
 }
 
-.action-button {
-  flex: 1;
-  padding: 14px 20px;
-  font-size: 15px;
-  font-weight: 600;
-  color: #ffffff;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  white-space: nowrap;
-}
-
-.action-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
-}
-
-.action-button:active {
-  transform: translateY(0);
-}
-
-.action-button.copied {
-  opacity: 0.8;
-}
-
-/* Button Colors - matching product card gradients */
-.button-purple {
-  background: linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%);
-}
-
-.button-purple:hover {
-  box-shadow: 0 8px 20px rgba(74, 95, 193, 0.4);
-}
-
-.button-green {
-  background: linear-gradient(135deg, #3d9991 0%, #2d6b66 100%);
-}
-
-.button-green:hover {
-  box-shadow: 0 8px 20px rgba(61, 153, 145, 0.4);
-}
-
-.button-red {
-  background: linear-gradient(135deg, #c7659f 0%, #c43d52 100%);
-}
-
-.button-red:hover {
-  box-shadow: 0 8px 20px rgba(196, 61, 82, 0.4);
-}
-
-.button-blue {
-  background: linear-gradient(135deg, #3b8fd1 0%, #00b8c4 100%);
-}
-
-.button-blue:hover {
-  box-shadow: 0 8px 20px rgba(59, 143, 209, 0.4);
-}
-
-/* Legacy button styles for backwards compatibility */
-.copy-accounts-button {
-  width: 100%;
-  padding: 16px 32px;
-  font-size: 16px;
-  font-weight: 600;
-  color: #ffffff;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  margin-top: 24px;
-  animation: fadeIn 0.8s ease-out 0.4s backwards;
-}
-
-.copy-accounts-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
-}
-
-.copy-accounts-button:active {
-  transform: translateY(0);
-}
-
-.copy-accounts-button.copied {
-  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
-}
-
-/* Proceed Button (Don't stop me now) */
-.proceed-button {
-  width: 100%;
-  padding: 18px 32px;
-  font-size: 18px;
-  font-weight: 700;
-  color: #ffffff;
-  background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  margin-top: 12px;
-  animation: fadeIn 0.8s ease-out 0.4s backwards;
-  box-shadow: 0 4px 20px rgba(74, 222, 128, 0.3);
-}
-
-.proceed-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 30px rgba(74, 222, 128, 0.5);
-}
-
-.proceed-button:active {
-  transform: translateY(0);
-}
-
-/* Retry Button (Womp womp) */
-.retry-button {
-  width: 100%;
-  padding: 18px 32px;
-  font-size: 18px;
-  font-weight: 700;
-  color: #ffffff;
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  margin-top: 12px;
-  animation: fadeIn 0.8s ease-out 0.4s backwards;
-  box-shadow: 0 4px 20px rgba(245, 158, 11, 0.3);
-}
-
-.retry-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 30px rgba(245, 158, 11, 0.5);
-}
-
-.retry-button:active {
-  transform: translateY(0);
-}
-
-/* Copy Response Button */
-.copy-response-button {
-  width: 100%;
-  padding: 16px 32px;
-  font-size: 16px;
-  font-weight: 600;
-  color: #ffffff;
-  background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  margin-top: 24px;
-  animation: fadeIn 0.8s ease-out 0.4s backwards;
-}
-
-.copy-response-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 30px rgba(74, 222, 128, 0.3);
-}
-
-.copy-response-button:active {
-  transform: translateY(0);
-}
-
-.copy-response-button.copied {
-  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-}
-
-/* Start Over Button */
-.start-over-button {
-  width: 100%;
-  padding: 16px 32px;
-  font-size: 16px;
-  font-weight: 600;
-  color: #ffffff;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  margin-top: 12px;
-  animation: fadeIn 0.8s ease-out 0.4s backwards;
-}
-
-.start-over-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
-}
-
-.start-over-button:active {
-  transform: translateY(0);
-}
 
 /* Product Selector Styles */
 .product-selector {
@@ -1080,7 +1109,7 @@ body {
 
   .status-badge {
     font-size: 12px;
-    padding: 4px 12px;
+    padding: 4px 14px;
   }
   
   .code-block {
@@ -1091,21 +1120,9 @@ body {
     font-size: 11px;
   }
   
-  .proceed-button,
-  .retry-button {
-    font-size: 16px;
-    padding: 16px 28px;
-  }
-
   .button-row {
     flex-direction: column;
     gap: 10px;
-  }
-
-  .action-button {
-    width: 100%;
-    font-size: 14px;
-    padding: 12px 16px;
   }
 
   .product-selector {
@@ -1396,7 +1413,7 @@ body {
 .event-logs-scroll {
   flex: 1;
   overflow-y: auto;
-  margin-bottom: 20px;
+  margin-bottom: 0px;
   border-radius: 12px;
   max-height: 500px;
   padding-top: 48px;
@@ -1436,19 +1453,6 @@ body {
   background: rgba(0, 0, 0, 0.25);
 }
 
-/* Remove code-block styling for event log items */
-.event-log-item .json-container {
-  position: static;
-}
-
-.event-log-item .code-block {
-  background: transparent;
-  border: none;
-  box-shadow: none;
-  border-radius: 0;
-  padding: 0;
-}
-
 .event-log-content {
   margin: 0;
   padding: 0;
@@ -1466,6 +1470,19 @@ body {
   padding: 0;
 }
 
+/* Remove code-block styling for event log items */
+.event-log-item .json-container {
+  position: static;
+}
+
+.event-log-item .code-block {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  padding: 0;
+}
+
 .event-log-placeholder {
   padding: 40px 20px;
   text-align: center;
@@ -1474,45 +1491,6 @@ body {
 
 .event-logs-modal .copy-button {
   margin-top: auto;
-}
-
-/* Copy Logs Button */
-.copy-logs-button {
-  width: 100%;
-  padding: 16px 32px;
-  font-size: 16px;
-  font-weight: 600;
-  color: #ffffff;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  margin-top: 16px;
-  animation: fadeIn 0.8s ease-out 0.4s backwards;
-}
-
-.copy-logs-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
-}
-
-.copy-logs-button:active {
-  transform: translateY(0);
-}
-
-.copy-logs-button.copied {
-  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
-}
-
-.copy-logs-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.copy-logs-button:disabled:hover {
-  transform: none;
-  box-shadow: none;
 }
 
 /* Adjust Plaid Link iframe position when event logs are visible */

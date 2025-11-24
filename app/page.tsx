@@ -8,8 +8,8 @@ import ProductSelector from '@/components/ProductSelector';
 import JsonHighlight from '@/components/JsonHighlight';
 import CodeEditor from '@uiw/react-textarea-code-editor';
 import SettingsToggle from '@/components/SettingsToggle';
+import ArrowButton from '@/components/ArrowButton';
 import { PRODUCTS_ARRAY, PRODUCT_CONFIGS, getProductConfigById } from '@/lib/productConfig';
-import { isMobileDevice } from '@/utils/deviceDetection';
 
 export default function Home() {
   const [linkToken, setLinkToken] = useState<string | null>(null);
@@ -29,6 +29,7 @@ export default function Home() {
   const [apiStatusCode, setApiStatusCode] = useState<number>(200);
   const [linkEvents, setLinkEvents] = useState<any[]>([]);
   const [showEventLogs, setShowEventLogs] = useState(false);
+  const [eventLogsCopied, setEventLogsCopied] = useState(false);
   const eventLogsRef = useRef<HTMLDivElement>(null);
   const [linkTokenConfig, setLinkTokenConfig] = useState<any>(null);
   const [eventLogsPosition, setEventLogsPosition] = useState<'left' | 'right'>('right');
@@ -47,21 +48,9 @@ export default function Home() {
   const [tempLayerMode, setTempLayerMode] = useState(false);
   const hasCustomSettings = zapMode || embeddedMode || layerMode;
   const [showZapResetButton, setShowZapResetButton] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-  const [eventLogsCopied, setEventLogsCopied] = useState(false);
 
   // Don't fetch link token on mount - wait for product selection
   // useEffect removed - link token fetched after product selection
-
-  // Mobile device detection - auto-enable Zap mode on mobile
-  useEffect(() => {
-    const mobile = isMobileDevice();
-    setIsMobile(mobile);
-    if (mobile) {
-      setZapMode(true);
-      setTempZapMode(true);
-    }
-  }, []); // Run once on mount
 
   // Welcome animation sequence
   useEffect(() => {
@@ -404,8 +393,8 @@ export default function Home() {
       const effectiveProductId = selectedChildProduct || selectedProduct;
       const productConfig = getProductConfigById(effectiveProductId!);
 
-      // Skip accounts/get for Signal Balance or when in mobile Zap mode
-      const skipAccountsGet = effectiveProductId === 'signal-balance' || isMobile;
+      // Skip accounts/get for Signal Balance
+      const skipAccountsGet = effectiveProductId === 'signal-balance';
 
       if (!skipAccountsGet) {
         // Get accounts data
@@ -456,7 +445,7 @@ export default function Home() {
       setModalState('error');
       setShowModal(true);
     }
-  }, [selectedProduct, selectedChildProduct, isMobile]);
+  }, [selectedProduct, selectedChildProduct]);
 
   const onSuccess = useCallback((public_token: string, metadata: any) => {
     // Hide the button
@@ -517,7 +506,7 @@ export default function Home() {
 
       // Get the effective product ID to check if we should skip accounts/get
       const effectiveProductId = selectedChildProduct || selectedProduct;
-      const skipAccountsGet = effectiveProductId === 'signal-balance' || isMobile;
+      const skipAccountsGet = effectiveProductId === 'signal-balance';
 
       if (skipAccountsGet) {
         // Skip accounts/get for Signal Balance and go directly to product API
@@ -794,6 +783,44 @@ export default function Home() {
     setShowProductModal(true);
   };
 
+  const handleCopyAccessToken = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    if (accessToken) {
+      try {
+        await navigator.clipboard.writeText(accessToken);
+        // Add visual feedback
+        const button = event.currentTarget;
+        const originalText = button.textContent;
+        button.textContent = 'Copied!';
+        button.classList.add('copied');
+        setTimeout(() => {
+          button.textContent = originalText;
+          button.classList.remove('copied');
+        }, 2000);
+      } catch (error) {
+        console.error('Failed to copy:', error);
+      }
+    }
+  };
+
+
+  const handleCopyConfig = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    if (linkTokenConfig) {
+      try {
+        await navigator.clipboard.writeText(JSON.stringify(linkTokenConfig, null, 2));
+        // Add visual feedback
+        const button = event.currentTarget;
+        const originalText = button.textContent;
+        button.textContent = 'Copied!';
+        button.classList.add('copied');
+        setTimeout(() => {
+          button.textContent = originalText;
+          button.classList.remove('copied');
+        }, 2000);
+      } catch (error) {
+        console.error('Failed to copy:', error);
+      }
+    }
+  };
 
   const renderModalContent = () => {
     if (modalState === 'preview-config' && linkTokenConfig) {
@@ -801,73 +828,57 @@ export default function Home() {
         <div className="modal-success">
           <div className="success-header">
             <h2>Here&apos;s the /link/token/create configuration that will be used:</h2>
-            <button 
-              className="config-edit-icon" 
-              onClick={handleToggleEditMode}
-              title={isEditingConfig ? "Exit edit mode" : "Edit configuration"}
-            >
-              {isEditingConfig ? (
-                // X icon for exit
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-              ) : (
-                // Pencil icon for edit
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                </svg>
-              )}
-            </button>
           </div>
           {!isEditingConfig ? (
-            <div className="account-data">
-              <JsonHighlight data={linkTokenConfig} />
-            </div>
+            <>
+              <div className="account-data config-data-with-edit">
+                <button 
+                  className="config-edit-icon" 
+                  onClick={handleToggleEditMode}
+                  title="Edit configuration"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                  </svg>
+                </button>
+                <JsonHighlight data={linkTokenConfig} />
+              </div>
+              <div className="modal-button-row two-buttons">
+                <ArrowButton variant="red" direction="back" onClick={handleGoBackToProducts} />
+                <ArrowButton variant="blue" onClick={() => handleProceedWithConfig()} />
+              </div>
+            </>
           ) : (
-            <div className="code-editor-container">
-              <CodeEditor
-                value={editedConfig}
-                language="json"
-                onChange={(e) => setEditedConfig(e.target.value)}
-                padding={15}
-                data-color-mode="dark"
-                style={{
-                  fontSize: 13,
-                  fontFamily: 'Monaco, Menlo, Ubuntu Mono, Consolas, monospace',
-                  backgroundColor: 'rgba(0, 0, 0, 0.3)',
-                  borderRadius: '12px',
-                  minHeight: '400px',
-                  maxHeight: '500px',
-                  overflowY: 'auto',
-                }}
-              />
-              {configError && (
-                <div className="config-error">
-                  {configError}
-                </div>
-              )}
-            </div>
-          )}
-          {!isEditingConfig ? (
-            <div className="button-row">
-              <button className="action-button button-red" onClick={handleGoBackToProducts}>
-                Go back, I want to do something else
-              </button>
-              <button className="action-button button-blue" onClick={() => handleProceedWithConfig()}>
-                Looks good, proceed!
-              </button>
-            </div>
-          ) : (
-            <div className="button-row">
-              <button className="action-button button-red" onClick={handleCancelEdit}>
-                Cancel
-              </button>
-              <button className="action-button button-blue" onClick={handleSaveAndProceed}>
-                Save & Proceed
-              </button>
-            </div>
+            <>
+              <div className="code-editor-container">
+                <CodeEditor
+                  value={editedConfig}
+                  language="json"
+                  onChange={(e) => setEditedConfig(e.target.value)}
+                  padding={15}
+                  data-color-mode="dark"
+                  style={{
+                    fontSize: 13,
+                    fontFamily: 'Monaco, Menlo, Ubuntu Mono, Consolas, monospace',
+                    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                    borderRadius: '12px',
+                    minHeight: '400px',
+                    maxHeight: '500px',
+                    overflowY: 'auto',
+                  }}
+                />
+                {configError && (
+                  <div className="config-error">
+                    {configError}
+                  </div>
+                )}
+              </div>
+              <div className="modal-button-row two-buttons">
+                <ArrowButton variant="red" direction="back" onClick={handleCancelEdit} />
+                <ArrowButton variant="blue" onClick={handleSaveAndProceed} />
+              </div>
+            </>
           )}
         </div>
       );
@@ -881,15 +892,13 @@ export default function Home() {
             <h2>onSuccess Callback Fired!</h2>
           </div>
           <p className="callback-description">
-            Here&apos;s the data returned from Plaid Link:
+            Here&apos;s the data returned from Link:
           </p>
           <div className="account-data">
             <JsonHighlight data={callbackData} />
           </div>
-          <div className="button-row">
-            <button className="action-button button-blue" onClick={handleProceedWithSuccess}>
-              Don't stop me now
-            </button>
+          <div className="modal-button-row single-button">
+            <ArrowButton variant="blue" onClick={handleProceedWithSuccess} />
           </div>
         </div>
       );
@@ -905,10 +914,8 @@ export default function Home() {
           <div className="account-data">
             <JsonHighlight data={callbackData} />
           </div>
-          <div className="button-row">
-            <button className="action-button button-red" onClick={handleExitRetry}>
-              Try again?
-            </button>
+          <div className="modal-button-row single-button">
+            <ArrowButton variant="red" onClick={handleExitRetry} />
           </div>
         </div>
       );
@@ -948,12 +955,16 @@ export default function Home() {
             </span>
           </div>
           <div className="account-data">
-            <JsonHighlight data={accountsData} />
+            <JsonHighlight 
+              data={accountsData}
+              expandableCopy={{
+                responseData: accountsData,
+                accessToken: accessToken
+              }}
+            />
           </div>
-          <div className="button-row">
-            <button className="action-button button-blue" onClick={handleCallProduct}>
-              Call {productName}
-            </button>
+          <div className="modal-button-row single-button">
+            <ArrowButton variant="blue" onClick={handleCallProduct} />
           </div>
         </div>
       );
@@ -1015,12 +1026,17 @@ export default function Home() {
             </span>
           </div>
           <div className="account-data">
-            <JsonHighlight data={productData} highlightKeys={productConfig?.highlightKeys} />
+            <JsonHighlight 
+              data={productData} 
+              highlightKeys={productConfig?.highlightKeys}
+              expandableCopy={{
+                responseData: productData,
+                accessToken: accessToken
+              }}
+            />
           </div>
-          <div className="button-row">
-            <button className="action-button button-blue" onClick={handleStartOver}>
-              Cool. Let's do it again.
-            </button>
+          <div className="modal-button-row single-button">
+            <ArrowButton variant="blue" onClick={handleStartOver} />
           </div>
         </div>
       );
@@ -1080,8 +1096,7 @@ export default function Home() {
               label="⚡️ Mode" 
               checked={tempZapMode} 
               onChange={handleToggleZap} 
-              disabled={isMobile}
-              tooltip={isMobile ? "Not available for mobile. Switch to desktop for the full Flash experience!" : undefined}
+              disabled={false} 
             />
             <SettingsToggle 
               label="Embedded Mode" 
@@ -1093,7 +1108,7 @@ export default function Home() {
               label="Layer" 
               checked={tempLayerMode} 
               onChange={handleToggleLayer} 
-              disabled={true} 
+              disabled={true}
             />
           </div>
           <div className="button-row">
@@ -1117,6 +1132,9 @@ export default function Home() {
             <div className="success-header">
               <h2>🟢 onEvent Callbacks</h2>
             </div>
+          <p className="callback-description">
+            Here&apos;s what went down:
+          </p>
             <div className="event-logs-wrapper">
               <button 
                 className={`event-logs-copy-button ${eventLogsCopied ? 'copied' : ''}`}
@@ -1149,9 +1167,7 @@ export default function Home() {
                 {linkEvents.length > 0 ? (
                   linkEvents.map((event, index) => (
                     <div key={index} className={`event-log-item ${index % 2 === 0 ? 'even' : 'odd'}`}>
-                      <div className="event-log-content">
-                        <JsonHighlight data={event} showCopyButton={false} />
-                      </div>
+                      <JsonHighlight data={event} showCopyButton={false} />
                     </div>
                   ))
                 ) : (
@@ -1188,7 +1204,13 @@ export default function Home() {
                   </span>
                 </div>
                 <div className="account-data">
-                  <JsonHighlight data={accountsData} />
+                  <JsonHighlight 
+                    data={accountsData}
+                    expandableCopy={{
+                      responseData: accountsData,
+                      accessToken: accessToken
+                    }}
+                  />
                 </div>
               </div>
             </div>
@@ -1217,6 +1239,10 @@ export default function Home() {
                     const productConfig = getProductConfigById(effectiveProductId!);
                     return productConfig?.highlightKeys;
                   })()}
+                  expandableCopy={{
+                    responseData: productData,
+                    accessToken: accessToken
+                  }}
                 />
               </div>
             </div>
