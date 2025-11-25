@@ -5,11 +5,8 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+  font-family: 'PlaidSans',
     sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
 .app {
@@ -24,14 +21,16 @@ body {
 
 /* Welcome Animation */
 .welcome-text {
-  font-size: 28px;
-  font-weight: 600;
+  font-size: 32px;
+  font-weight: 1000;
   color: #ffffff;
   text-align: center;
   position: absolute;
   animation: welcomeFade 5s ease-in-out forwards;
+  opacity: 1;  /* ADD THIS LINE to ensure it's visible */
   pointer-events: none;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
 }
 
 .welcome-word {
@@ -39,8 +38,28 @@ body {
   position: relative;
 }
 
+/* Plaid logo animation */
+.welcome-plaid-logo {
+  width: 220px;      /* Control actual display size here */
+  height: auto;      /* Maintains aspect ratio */
+  opacity: 0;
+  animation: logoFadeIn 0.8s ease-in-out 0.3s forwards;
+  vertical-align: middle;
+}
+
+@keyframes logoFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Lightning glow animation for "Flash" word only */
-.welcome-word-4 {
+.welcome-word {
   opacity: 0;
   animation: lightningAppear 0.6s ease-in-out 1.5s forwards;
 }
@@ -1091,6 +1110,12 @@ body {
   .welcome-text {
     font-size: 22px;
     padding: 0 20px;
+    gap: 8px;
+  }
+  
+  .welcome-plaid-logo {
+    width: 140px;
+    height: auto;
   }
   
   .link-button {

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { usePlaidLink } from 'react-plaid-link';
+import Image from 'next/image';
 import LinkButton from '@/components/LinkButton';
 import Modal from '@/components/Modal';
 import ProductSelector from '@/components/ProductSelector';
@@ -1049,13 +1050,15 @@ export default function Home() {
     <div className="app">
       {showWelcome && (
         <div className="welcome-text">
-          <span className="welcome-word welcome-word-1">Welcome</span>
-          {' '}
-          <span className="welcome-word welcome-word-2">to</span>
-          {' '}
-          <span className="welcome-word welcome-word-3">Plaid</span>
-          {' '}
-          <span className="welcome-word welcome-word-4">Flash</span>
+          <Image 
+            src="/icons/plaid-horizontal.svg" 
+            alt="Plaid"
+            width={686}
+            height={350} 
+            className="welcome-plaid-logo"
+            priority
+          />
+          <span className="welcome-word welcome-word">FLASH</span>
         </div>
       )}
       <LinkButton 
