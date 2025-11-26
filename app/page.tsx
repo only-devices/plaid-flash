@@ -44,11 +44,17 @@ export default function Home() {
   const [zapMode, setZapMode] = useState(false);
   const [embeddedMode, setEmbeddedMode] = useState(false);
   const [layerMode, setLayerMode] = useState(false);
+  const [exploreMode, setExploreMode] = useState(false);
   const [tempZapMode, setTempZapMode] = useState(false);
   const [tempEmbeddedMode, setTempEmbeddedMode] = useState(false);
   const [tempLayerMode, setTempLayerMode] = useState(false);
-  const hasCustomSettings = zapMode || embeddedMode || layerMode;
+  const [tempExploreMode, setTempExploreMode] = useState(false);
+  const hasCustomSettings = zapMode || embeddedMode || layerMode || exploreMode;
   const [showZapResetButton, setShowZapResetButton] = useState(false);
+  
+  // Explore Mode state
+  const [exploreLinkCompleted, setExploreLinkCompleted] = useState(false);
+  const [exploreAccessToken, setExploreAccessToken] = useState<string | null>(null);
 
   // Don't fetch link token on mount - wait for product selection
   // useEffect removed - link token fetched after product selection
@@ -136,18 +142,32 @@ export default function Home() {
       setShowProductModal(false);
       setShowChildModal(true);
     } else {
-      // Direct product, show preview modal
+      // Direct product
       setSelectedProduct(productId);
       setSelectedChildProduct(null);
       setShowProductModal(false);
-      showLinkConfigPreview(productId);
+      
+      // If in Explore Mode with Link completed, call API directly
+      if (exploreLinkCompleted) {
+        handleExploreModeApiCall(productId);
+      } else {
+        // Normal mode: show preview modal
+        showLinkConfigPreview(productId);
+      }
     }
   };
 
   const handleChildProductSelect = (childId: string) => {
     setSelectedChildProduct(childId);
     setShowChildModal(false);
-    showLinkConfigPreview(childId);
+    
+    // If in Explore Mode with Link completed, call API directly
+    if (exploreLinkCompleted) {
+      handleExploreModeApiCall(childId);
+    } else {
+      // Normal mode: show preview modal
+      showLinkConfigPreview(childId);
+    }
   };
 
   const showLinkConfigPreview = (productId: string) => {
@@ -319,6 +339,7 @@ export default function Home() {
     setTempZapMode(zapMode);
     setTempEmbeddedMode(embeddedMode);
     setTempLayerMode(layerMode);
+    setTempExploreMode(exploreMode);
     // Hide product modal and show settings modal
     setShowProductModal(false);
     setShowChildModal(false);
@@ -338,20 +359,37 @@ export default function Home() {
 
   const handleSaveSettings = () => {
     // Commit temp state to main state
+    const wasExploreMode = exploreMode;
+    const willBeExploreMode = tempExploreMode;
+    
     setZapMode(tempZapMode);
     setEmbeddedMode(tempEmbeddedMode);
     setLayerMode(tempLayerMode);
-    // Close settings modal and restore product modal
+    setExploreMode(tempExploreMode);
+    
+    // Close settings modal
     setShowSettingsModal(false);
-    if (selectedProduct && PRODUCT_CONFIGS[selectedProduct]?.children && selectedChildProduct) {
-      setShowChildModal(true);
+    
+    // If Explore Mode was just enabled, start it immediately
+    if (!wasExploreMode && willBeExploreMode) {
+      handleExploreModeStart();
     } else {
-      setShowProductModal(true);
+      // Otherwise restore the appropriate product modal
+      if (selectedProduct && PRODUCT_CONFIGS[selectedProduct]?.children && selectedChildProduct) {
+        setShowChildModal(true);
+      } else {
+        setShowProductModal(true);
+      }
     }
   };
 
   const handleToggleZap = () => {
-    setTempZapMode(!tempZapMode);
+    const newValue = !tempZapMode;
+    setTempZapMode(newValue);
+    // Zap and Explore are mutually exclusive
+    if (newValue) {
+      setTempExploreMode(false);
+    }
   };
 
   const handleToggleEmbedded = () => {
@@ -365,6 +403,15 @@ export default function Home() {
     // Disabled for now, but handler exists
     if (!true) { // Will enable later
       setTempLayerMode(!tempLayerMode);
+    }
+  };
+
+  const handleToggleExplore = () => {
+    const newValue = !tempExploreMode;
+    setTempExploreMode(newValue);
+    // Zap and Explore are mutually exclusive
+    if (newValue) {
+      setTempZapMode(false);
     }
   };
 
@@ -456,7 +503,7 @@ export default function Home() {
       // Zap Mode: skip callback modal, go directly to API calls
       handleZapModeSuccess(public_token, metadata);
     } else {
-      // Default mode: slide event logs to the left and show callback modal
+      // Default mode and Explore Mode: slide event logs to the left and show callback modal
       setEventLogsPosition('left');
       setShowModal(true);
       setModalState('callback-success');
@@ -465,7 +512,7 @@ export default function Home() {
         metadata
       });
     }
-  }, [zapMode, handleZapModeSuccess]);
+  }, [zapMode, exploreMode, handleZapModeSuccess]);
 
   const handleProceedWithSuccess = async () => {
     // Start fade-out animation for both modals
@@ -504,6 +551,15 @@ export default function Home() {
 
       // Store access token for cleanup
       setAccessToken(access_token);
+
+      // If in Explore Mode, store access token and show product selector
+      if (exploreMode) {
+        setExploreAccessToken(access_token);
+        setExploreLinkCompleted(true);
+        setShowModal(false);
+        setShowProductModal(true);
+        return;
+      }
 
       // Get the effective product ID to check if we should skip accounts/get
       const effectiveProductId = selectedChildProduct || selectedProduct;
@@ -625,6 +681,88 @@ export default function Home() {
     }
   };
 
+  const handleBackToProducts = () => {
+    // Clear current product data
+    setProductData(null);
+    setAccountsData(null);
+    setSelectedProduct(null);
+    setSelectedChildProduct(null);
+    
+    // Hide success modal and show product selector
+    setShowModal(false);
+    setShowProductModal(true);
+    
+    // Keep exploreLinkCompleted and exploreAccessToken intact for next product selection
+  };
+
+  const handleExploreModeApiCall = async (productId: string) => {
+    // Show processing state for product
+    setModalState('processing-product');
+    setShowModal(true);
+
+    try {
+      const productConfig = getProductConfigById(productId);
+      
+      if (!productConfig || !productConfig.apiEndpoint) {
+        throw new Error('Product API endpoint not configured');
+      }
+
+      // In Explore Mode, we may need to call /accounts/get first for some products
+      // Check if we should skip accounts/get (same logic as normal mode)
+      const skipAccountsGet = productId === 'signal-balance';
+
+      let accountsData = null;
+
+      if (!skipAccountsGet) {
+        // Call /accounts/get first
+        const accountsResponse = await fetch('/api/accounts-get', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ access_token: exploreAccessToken }),
+        });
+
+        accountsData = await accountsResponse.json();
+        setAccountsData(accountsData);
+      }
+
+      // Build request body with access token and any additional params
+      const requestBody: any = { access_token: exploreAccessToken };
+      if (productConfig.additionalApiParams) {
+        Object.assign(requestBody, productConfig.additionalApiParams);
+      }
+      
+      const productResponse = await fetch(productConfig.apiEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      const productData = await productResponse.json();
+      
+      // Update state to show product data (even if error)
+      setProductData(productData);
+      setApiStatusCode(productResponse.status);
+      setModalState('success');
+    } catch (error) {
+      console.error('Error fetching product data in Explore Mode:', error);
+      setErrorMessage('We encountered an issue fetching product data. Please try again.');
+      setModalState('error');
+      
+      // In Explore Mode, on error, return to product selector instead of full reset
+      setTimeout(() => {
+        setShowModal(false);
+        setProductData(null);
+        setAccountsData(null);
+        setModalState('loading');
+        setShowProductModal(true);
+      }, 3000);
+    }
+  };
+
   const onExit = useCallback((err: any, metadata: any) => {
     // Hide button
     setShowButton(false);
@@ -690,7 +828,12 @@ export default function Home() {
 
   // Auto-open Link when ready after product selection
   useEffect(() => {
-    if (ready && linkToken && (selectedProduct || selectedChildProduct) && !showModal && !showChildModal && !showProductModal && !showZapResetButton) {
+    // In Explore Mode, we can open Link without a selected product
+    // In normal mode, we need a selected product
+    const shouldOpenLink = ready && linkToken && !showModal && !showChildModal && !showProductModal && !showZapResetButton && 
+      (exploreMode || selectedProduct || selectedChildProduct);
+    
+    if (shouldOpenLink) {
       // Clear previous events and show event logs (unless in Zap Mode)
       setLinkEvents([]);
       if (!zapMode) {
@@ -699,7 +842,7 @@ export default function Home() {
       setShowProductModal(false); // Ensure product modal is hidden
       open();
     }
-  }, [ready, linkToken, selectedProduct, selectedChildProduct, showModal, showChildModal, showProductModal, showZapResetButton, zapMode, open]);
+  }, [ready, linkToken, selectedProduct, selectedChildProduct, showModal, showChildModal, showProductModal, showZapResetButton, zapMode, exploreMode, open]);
 
   const handleButtonClick = () => {
     // Show product selection modal instead of opening Link directly
@@ -707,9 +850,60 @@ export default function Home() {
     setShowProductModal(true);
   };
 
+  const handleExploreModeStart = async () => {
+    // Hide main button
+    setShowButton(false);
+    
+    // Show event logs immediately
+    setShowEventLogs(true);
+    setEventLogsPosition('right');
+    
+    try {
+      // Create Link token with all products
+      const exploreConfig = {
+        link_customization_name: 'flash',
+        user: {
+          client_user_id: 'flash_user_id01',
+          phone_number: '+14155550011'
+        },
+        client_name: 'Plaid Flash',
+        products: ['auth', 'signal', 'identity', 'transactions', 'investments', 'liabilities'],
+        days_requested: 14,
+        country_codes: ['US'],
+        language: 'en'
+      };
+      
+      const response = await fetch('/api/create-link-token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(exploreConfig),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to create link token');
+      }
+      
+      const data = await response.json();
+      
+      // Set link token which will trigger Link to open via the useEffect
+      setLinkToken(data.link_token);
+      setLinkTokenConfig(exploreConfig);
+    } catch (error) {
+      console.error('Error creating Explore Mode link token:', error);
+      setShowButton(true);
+      setShowEventLogs(false);
+    }
+  };
+
   const handleStartOver = async () => {
+    // Hide product selector modals first
+    setShowProductModal(false);
+    setShowChildModal(false);
+    
     // Clean up Plaid item if access token exists
-    if (accessToken) {
+    if (accessToken || exploreAccessToken) {
       // Show tidying up message
       setModalState('tidying-up');
       setShowModal(true);
@@ -720,7 +914,7 @@ export default function Home() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ access_token: accessToken }),
+          body: JSON.stringify({ access_token: accessToken || exploreAccessToken }),
         });
       } catch (error) {
         console.error('Error removing item:', error);
@@ -743,6 +937,11 @@ export default function Home() {
     setShowButton(false);
     setShowWelcome(false);
     setShowProductModal(true);
+    
+    // Reset Explore Mode state completely
+    setExploreMode(false);
+    setExploreLinkCompleted(false);
+    setExploreAccessToken(null);
   };
 
   const handleZapReset = async () => {
@@ -951,9 +1150,11 @@ export default function Home() {
           <div className="success-header">
             <div className="success-icon">✓</div>
             <h2>/accounts/get Response</h2>
-            <span className={`status-badge ${apiStatusCode < 400 ? 'status-success' : 'status-error'}`}>
-              {apiStatusCode}
-            </span>
+            <button className="reset-icon-button" onClick={handleStartOver} title="Reset Session" style={{ background: 'linear-gradient(135deg, #c7659f 0%, #c43d52 100%)' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2" />
+              </svg>
+            </button>
           </div>
           <div className="account-data">
             <JsonHighlight 
@@ -1022,9 +1223,11 @@ export default function Home() {
           <div className="success-header">
             <div className="success-icon">✓</div>
             <h2>{apiTitle} Response</h2>
-            <span className={`status-badge ${apiStatusCode < 400 ? 'status-success' : 'status-error'}`}>
-              {apiStatusCode}
-            </span>
+            <button className="reset-icon-button" onClick={handleStartOver} title="Reset Session" style={{ background: 'linear-gradient(135deg, #c7659f 0%, #c43d52 100%)' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2" />
+              </svg>
+            </button>
           </div>
           <div className="account-data">
             <JsonHighlight 
@@ -1032,13 +1235,21 @@ export default function Home() {
               highlightKeys={productConfig?.highlightKeys}
               expandableCopy={{
                 responseData: productData,
-                accessToken: accessToken
+                accessToken: accessToken || exploreAccessToken
               }}
             />
           </div>
-          <div className="modal-button-row single-button">
-            <ArrowButton variant="blue" onClick={handleStartOver} />
-          </div>
+          {exploreLinkCompleted ? (
+            // Explore Mode: show "Back to Products" button (reset is in header)
+            <div className="modal-button-row single-button">
+              <ArrowButton variant="blue" onClick={handleBackToProducts} />
+            </div>
+          ) : (
+            // Normal Mode: show "Start Over" button
+            <div className="modal-button-row single-button">
+              <ArrowButton variant="blue" onClick={handleStartOver} />
+            </div>
+          )}
         </div>
       );
     }
@@ -1069,8 +1280,9 @@ export default function Home() {
         <ProductSelector 
           products={PRODUCTS_ARRAY} 
           onSelect={handleProductSelect}
-          onSettingsClick={handleOpenSettings}
+          onSettingsClick={exploreLinkCompleted ? undefined : handleOpenSettings}
           hasCustomSettings={hasCustomSettings}
+          onResetClick={exploreLinkCompleted ? handleStartOver : undefined}
         />
       </Modal>
       <Modal isVisible={showChildModal}>
@@ -1083,9 +1295,10 @@ export default function Home() {
               setShowProductModal(true);
             }}
             showBackButton={true}
-            onSettingsClick={handleOpenSettings}
+            onSettingsClick={exploreLinkCompleted ? undefined : handleOpenSettings}
             hasCustomSettings={hasCustomSettings}
             title={PRODUCT_CONFIGS[selectedProduct].name}
+            onResetClick={exploreLinkCompleted ? handleStartOver : undefined}
           />
         )}
       </Modal>
@@ -1099,7 +1312,13 @@ export default function Home() {
               label="⚡️ Mode" 
               checked={tempZapMode} 
               onChange={handleToggleZap} 
-              disabled={false} 
+              disabled={tempExploreMode} 
+            />
+            <SettingsToggle 
+              label="🔍 Mode" 
+              checked={tempExploreMode} 
+              onChange={handleToggleExplore} 
+              disabled={tempZapMode} 
             />
             <SettingsToggle 
               label="Embedded Mode" 
@@ -1202,9 +1421,11 @@ export default function Home() {
                 <div className="success-header">
                 <div className="success-icon">✓</div>
                   <h2>/accounts/get Response</h2>
-                  <span className={`status-badge ${apiStatusCode < 400 ? 'status-success' : 'status-error'}`}>
-                    {apiStatusCode}
-                  </span>
+                  <button className="reset-icon-button" onClick={handleZapReset} title="Reset Session" style={{ background: 'linear-gradient(135deg, #c7659f 0%, #c43d52 100%)' }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2" />
+                    </svg>
+                  </button>
                 </div>
                 <div className="account-data">
                   <JsonHighlight 
@@ -1230,9 +1451,11 @@ export default function Home() {
                         return productConfig?.apiTitle || productConfig?.name || 'Product API';
                       })()} Response
                 </h2>
-                <span className={`status-badge ${apiStatusCode < 400 ? 'status-success' : 'status-error'}`}>
-                  {apiStatusCode}
-                </span>
+                <button className="reset-icon-button" onClick={handleZapReset} title="Reset Session" style={{ background: 'linear-gradient(135deg, #c7659f 0%, #c43d52 100%)' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2" />
+                  </svg>
+                </button>
               </div>
               <div className="account-data">
                 <JsonHighlight 

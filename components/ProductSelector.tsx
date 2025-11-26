@@ -9,6 +9,7 @@ interface ProductSelectorProps {
   onSettingsClick?: () => void;
   hasCustomSettings?: boolean;
   title?: string;
+  onResetClick?: () => void;
 }
 
 const ProductSelector: React.FC<ProductSelectorProps> = ({ 
@@ -18,7 +19,8 @@ const ProductSelector: React.FC<ProductSelectorProps> = ({
   showBackButton,
   onSettingsClick,
   hasCustomSettings = false,
-  title = 'Choose Your Own Adventure'
+  title = 'Choose Your Own Adventure',
+  onResetClick
 }) => {
   return (
     <div className="product-selector">
@@ -40,6 +42,13 @@ const ProductSelector: React.FC<ProductSelectorProps> = ({
           {hasCustomSettings && (
             <span className="settings-indicator"></span>
           )}
+        </button>
+      )}
+      {onResetClick && (
+        <button className="settings-gear-button" onClick={onResetClick} title="Reset Session" style={{ background: 'linear-gradient(135deg, #c7659f 0%, #c43d52 100%)' }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2" />
+          </svg>
         </button>
       )}
       <h2 className="product-selector-title">{title}</h2>

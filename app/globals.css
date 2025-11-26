@@ -461,6 +461,31 @@ body {
   color: #ffffff;
 }
 
+/* Reset Icon Button */
+.reset-icon-button {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  margin-left: auto;
+}
+
+.reset-icon-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: rotate(180deg);
+}
+
+.reset-icon-button:active {
+  transform: rotate(180deg) scale(0.95);
+}
+
 /* Account Data / Code Block */
 .account-data {
   margin: 24px 0;
@@ -639,6 +664,26 @@ body {
 
 .modal-button-row.two-buttons {
   justify-content: space-between;
+}
+
+/* Reset Session Link (Explore Mode) */
+.reset-session-link {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  font-size: 14px;
+  color: #888;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+  transition: color 0.2s ease;
+  font-family: inherit;
+  padding: 4px 8px;
+}
+
+.reset-session-link:hover {
+  color: #fff;
 }
 
 /* Arrow Buttons */
