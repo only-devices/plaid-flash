@@ -87,7 +87,7 @@ export default function Home() {
     // Remove welcome text after animation completes (5 seconds)
     const welcomeTimer = setTimeout(() => {
       setShowWelcome(false);
-    }, 5000);
+    }, 2800);
 
     // Show button after welcome fades out (5 seconds total)
     const buttonTimer = setTimeout(() => {
@@ -1395,7 +1395,6 @@ export default function Home() {
             className="welcome-plaid-logo"
             priority
           />
-          <span className="welcome-word welcome-word">FLASH</span>
         </div>
       )}
       <LinkButton 
