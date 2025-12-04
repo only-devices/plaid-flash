@@ -44,17 +44,33 @@ export default function Home() {
   const [zapMode, setZapMode] = useState(false);
   const [embeddedMode, setEmbeddedMode] = useState(false);
   const [layerMode, setLayerMode] = useState(false);
-  const [exploreMode, setExploreMode] = useState(false);
+  const [demoMode, setDemoMode] = useState(false);
   const [tempZapMode, setTempZapMode] = useState(false);
   const [tempEmbeddedMode, setTempEmbeddedMode] = useState(false);
   const [tempLayerMode, setTempLayerMode] = useState(false);
-  const [tempExploreMode, setTempExploreMode] = useState(false);
-  const hasCustomSettings = zapMode || embeddedMode || layerMode || exploreMode;
+  const [tempDemoMode, setTempDemoMode] = useState(false);
+  const hasCustomSettings = zapMode || embeddedMode || layerMode || demoMode;
   const [showZapResetButton, setShowZapResetButton] = useState(false);
   
-  // Explore Mode state
-  const [exploreLinkCompleted, setExploreLinkCompleted] = useState(false);
-  const [exploreAccessToken, setExploreAccessToken] = useState<string | null>(null);
+  // Demo Mode state
+  const [demoLinkCompleted, setDemoLinkCompleted] = useState(false);
+  const [demoAccessToken, setDemoAccessToken] = useState<string | null>(null);
+  const [showDemoProductsModal, setShowDemoProductsModal] = useState(false);
+  const [demoProductsVisibility, setDemoProductsVisibility] = useState<Record<string, boolean>>({});
+
+  // Initialize all products as visible for Demo Mode
+  const initializeProductVisibility = () => {
+    const visibility: Record<string, boolean> = {};
+    PRODUCTS_ARRAY.forEach(product => {
+      visibility[product.id] = true;
+      if (product.children) {
+        product.children.forEach(child => {
+          visibility[child.id] = true;
+        });
+      }
+    });
+    return visibility;
+  };
 
   // Don't fetch link token on mount - wait for product selection
   // useEffect removed - link token fetched after product selection
@@ -147,9 +163,9 @@ export default function Home() {
       setSelectedChildProduct(null);
       setShowProductModal(false);
       
-      // If in Explore Mode with Link completed, call API directly
-      if (exploreLinkCompleted) {
-        handleExploreModeApiCall(productId);
+      // If in Demo Mode with Link completed, call API directly
+      if (demoLinkCompleted) {
+        handleDemoModeApiCall(productId);
       } else {
         // Normal mode: show preview modal
         showLinkConfigPreview(productId);
@@ -161,9 +177,9 @@ export default function Home() {
     setSelectedChildProduct(childId);
     setShowChildModal(false);
     
-    // If in Explore Mode with Link completed, call API directly
-    if (exploreLinkCompleted) {
-      handleExploreModeApiCall(childId);
+    // If in Demo Mode with Link completed, call API directly
+    if (demoLinkCompleted) {
+      handleDemoModeApiCall(childId);
     } else {
       // Normal mode: show preview modal
       showLinkConfigPreview(childId);
@@ -339,7 +355,7 @@ export default function Home() {
     setTempZapMode(zapMode);
     setTempEmbeddedMode(embeddedMode);
     setTempLayerMode(layerMode);
-    setTempExploreMode(exploreMode);
+    setTempDemoMode(demoMode);
     // Hide product modal and show settings modal
     setShowProductModal(false);
     setShowChildModal(false);
@@ -359,20 +375,21 @@ export default function Home() {
 
   const handleSaveSettings = () => {
     // Commit temp state to main state
-    const wasExploreMode = exploreMode;
-    const willBeExploreMode = tempExploreMode;
+    const wasDemoMode = demoMode;
+    const willBeDemoMode = tempDemoMode;
     
     setZapMode(tempZapMode);
     setEmbeddedMode(tempEmbeddedMode);
     setLayerMode(tempLayerMode);
-    setExploreMode(tempExploreMode);
+    setDemoMode(tempDemoMode);
     
     // Close settings modal
     setShowSettingsModal(false);
     
-    // If Explore Mode was just enabled, start it immediately
-    if (!wasExploreMode && willBeExploreMode) {
-      handleExploreModeStart();
+    // If Demo Mode is enabled and Link not yet completed, show product selector modal
+    if (willBeDemoMode && !demoLinkCompleted) {
+      setDemoProductsVisibility(initializeProductVisibility());
+      setShowDemoProductsModal(true);
     } else {
       // Otherwise restore the appropriate product modal
       if (selectedProduct && PRODUCT_CONFIGS[selectedProduct]?.children && selectedChildProduct) {
@@ -386,9 +403,9 @@ export default function Home() {
   const handleToggleZap = () => {
     const newValue = !tempZapMode;
     setTempZapMode(newValue);
-    // Zap and Explore are mutually exclusive
+    // Zap and Demo are mutually exclusive
     if (newValue) {
-      setTempExploreMode(false);
+      setTempDemoMode(false);
     }
   };
 
@@ -406,13 +423,84 @@ export default function Home() {
     }
   };
 
-  const handleToggleExplore = () => {
-    const newValue = !tempExploreMode;
-    setTempExploreMode(newValue);
-    // Zap and Explore are mutually exclusive
+  const handleToggleDemo = () => {
+    const newValue = !tempDemoMode;
+    setTempDemoMode(newValue);
+    // Zap and Demo are mutually exclusive
     if (newValue) {
       setTempZapMode(false);
     }
+  };
+
+  const handleToggleDemoProduct = (productId: string) => {
+    setDemoProductsVisibility(prevVisibility => {
+      const newVisibility = { ...prevVisibility };
+      const currentValue = newVisibility[productId];
+      const newValue = !currentValue;
+      
+      // Find if this is a parent or child product
+      const parentProduct = PRODUCTS_ARRAY.find(p => p.id === productId);
+      const isParent = !!parentProduct;
+      
+      if (isParent) {
+        // Toggle parent
+        newVisibility[productId] = newValue;
+        
+        // Cascade to children
+        if (parentProduct.children) {
+          parentProduct.children.forEach(child => {
+            newVisibility[child.id] = newValue;
+          });
+        }
+      } else {
+        // This is a child - find its parent
+        const parent = PRODUCTS_ARRAY.find(p => 
+          p.children?.some(c => c.id === productId)
+        );
+        
+        if (parent) {
+          // Toggle the child
+          newVisibility[productId] = newValue;
+          
+          if (newValue) {
+            // If enabling a child, enable parent
+            newVisibility[parent.id] = true;
+          } else {
+            // If disabling a child, check if all siblings are disabled
+            const allChildrenDisabled = parent.children?.every(
+              child => !newVisibility[child.id]
+            );
+            
+            if (allChildrenDisabled) {
+              newVisibility[parent.id] = false;
+            }
+          }
+        }
+      }
+      
+      return newVisibility;
+    });
+  };
+
+  const handleDemoProductsGo = () => {
+    // Validate at least one product is enabled
+    const hasEnabledProduct = Object.values(demoProductsVisibility).some(v => v);
+    
+    if (!hasEnabledProduct) {
+      return; // Button should be disabled, but extra safety check
+    }
+    
+    // Close the products modal
+    setShowDemoProductsModal(false);
+    
+    // Start the Demo Mode flow
+    handleDemoModeStart();
+  };
+
+  const handleCancelDemoProducts = () => {
+    // Close products modal and return to settings
+    setShowDemoProductsModal(false);
+    setShowSettingsModal(true);
   };
 
   const handleZapModeSuccess = useCallback(async (public_token: string, metadata: any) => {
@@ -503,7 +591,7 @@ export default function Home() {
       // Zap Mode: skip callback modal, go directly to API calls
       handleZapModeSuccess(public_token, metadata);
     } else {
-      // Default mode and Explore Mode: slide event logs to the left and show callback modal
+      // Default mode and Demo Mode: slide event logs to the left and show callback modal
       setEventLogsPosition('left');
       setShowModal(true);
       setModalState('callback-success');
@@ -512,7 +600,7 @@ export default function Home() {
         metadata
       });
     }
-  }, [zapMode, exploreMode, handleZapModeSuccess]);
+  }, [zapMode, demoMode, handleZapModeSuccess]);
 
   const handleProceedWithSuccess = async () => {
     // Start fade-out animation for both modals
@@ -552,10 +640,10 @@ export default function Home() {
       // Store access token for cleanup
       setAccessToken(access_token);
 
-      // If in Explore Mode, store access token and show product selector
-      if (exploreMode) {
-        setExploreAccessToken(access_token);
-        setExploreLinkCompleted(true);
+      // If in Demo Mode, store access token and show product selector
+      if (demoMode) {
+        setDemoAccessToken(access_token);
+        setDemoLinkCompleted(true);
         setShowModal(false);
         setShowProductModal(true);
         return;
@@ -692,10 +780,10 @@ export default function Home() {
     setShowModal(false);
     setShowProductModal(true);
     
-    // Keep exploreLinkCompleted and exploreAccessToken intact for next product selection
+    // Keep demoLinkCompleted and demoAccessToken intact for next product selection
   };
 
-  const handleExploreModeApiCall = async (productId: string) => {
+  const handleDemoModeApiCall = async (productId: string) => {
     // Show processing state for product
     setModalState('processing-product');
     setShowModal(true);
@@ -707,7 +795,7 @@ export default function Home() {
         throw new Error('Product API endpoint not configured');
       }
 
-      // In Explore Mode, we may need to call /accounts/get first for some products
+      // In Demo Mode, we may need to call /accounts/get first for some products
       // Check if we should skip accounts/get (same logic as normal mode)
       const skipAccountsGet = productId === 'signal-balance';
 
@@ -720,7 +808,7 @@ export default function Home() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ access_token: exploreAccessToken }),
+          body: JSON.stringify({ access_token: demoAccessToken }),
         });
 
         accountsData = await accountsResponse.json();
@@ -728,7 +816,7 @@ export default function Home() {
       }
 
       // Build request body with access token and any additional params
-      const requestBody: any = { access_token: exploreAccessToken };
+      const requestBody: any = { access_token: demoAccessToken };
       if (productConfig.additionalApiParams) {
         Object.assign(requestBody, productConfig.additionalApiParams);
       }
@@ -748,11 +836,11 @@ export default function Home() {
       setApiStatusCode(productResponse.status);
       setModalState('success');
     } catch (error) {
-      console.error('Error fetching product data in Explore Mode:', error);
+      console.error('Error fetching product data in Demo Mode:', error);
       setErrorMessage('We encountered an issue fetching product data. Please try again.');
       setModalState('error');
       
-      // In Explore Mode, on error, return to product selector instead of full reset
+      // In Demo Mode, on error, return to product selector instead of full reset
       setTimeout(() => {
         setShowModal(false);
         setProductData(null);
@@ -783,13 +871,15 @@ export default function Home() {
 
   const onEvent = useCallback((eventName: string, metadata: any) => {
     // Add event to the logs
+    const eventData = {
+      timestamp: new Date().toISOString(),
+      eventName,
+      metadata
+    };
+    console.log('Link Event:', eventData);
     setLinkEvents(prevEvents => [
       ...prevEvents,
-      {
-        timestamp: new Date().toISOString(),
-        eventName,
-        metadata
-      }
+      eventData
     ]);
   }, []);
 
@@ -828,10 +918,10 @@ export default function Home() {
 
   // Auto-open Link when ready after product selection
   useEffect(() => {
-    // In Explore Mode, we can open Link without a selected product
+    // In Demo Mode, we can open Link without a selected product
     // In normal mode, we need a selected product
     const shouldOpenLink = ready && linkToken && !showModal && !showChildModal && !showProductModal && !showZapResetButton && 
-      (exploreMode || selectedProduct || selectedChildProduct);
+      (demoMode || selectedProduct || selectedChildProduct);
     
     if (shouldOpenLink) {
       // Clear previous events and show event logs (unless in Zap Mode)
@@ -842,7 +932,7 @@ export default function Home() {
       setShowProductModal(false); // Ensure product modal is hidden
       open();
     }
-  }, [ready, linkToken, selectedProduct, selectedChildProduct, showModal, showChildModal, showProductModal, showZapResetButton, zapMode, exploreMode, open]);
+  }, [ready, linkToken, selectedProduct, selectedChildProduct, showModal, showChildModal, showProductModal, showZapResetButton, zapMode, demoMode, open]);
 
   const handleButtonClick = () => {
     // Show product selection modal instead of opening Link directly
@@ -850,7 +940,7 @@ export default function Home() {
     setShowProductModal(true);
   };
 
-  const handleExploreModeStart = async () => {
+  const handleDemoModeStart = async () => {
     // Hide main button
     setShowButton(false);
     
@@ -859,15 +949,45 @@ export default function Home() {
     setEventLogsPosition('right');
     
     try {
-      // Create Link token with all products
-      const exploreConfig = {
+      // Build products array dynamically based on enabled products
+      const enabledProductIds = Object.keys(demoProductsVisibility).filter(
+        id => demoProductsVisibility[id]
+      );
+      
+      const productsSet = new Set<string>();
+      
+      enabledProductIds.forEach(productId => {
+        // Check if it's a parent product
+        const parentProduct = PRODUCTS_ARRAY.find(p => p.id === productId);
+        
+        if (parentProduct) {
+          // It's a parent - add its products
+          parentProduct.products.forEach(p => productsSet.add(p));
+        } else {
+          // It's a child - find its parent
+          const parent = PRODUCTS_ARRAY.find(p => 
+            p.children?.some(c => c.id === productId)
+          );
+          
+          if (parent) {
+            // Add parent's products
+            parent.products.forEach(p => productsSet.add(p));
+          }
+        }
+      });
+      
+      // Convert set to array (automatically de-duplicated)
+      const products = Array.from(productsSet);
+      
+      // Create Link token with dynamically built products
+      const demoConfig = {
         link_customization_name: 'flash',
         user: {
           client_user_id: 'flash_user_id01',
           phone_number: '+14155550011'
         },
         client_name: 'Plaid Flash',
-        products: ['auth', 'signal', 'identity', 'transactions', 'investments', 'liabilities'],
+        products,
         days_requested: 14,
         country_codes: ['US'],
         language: 'en'
@@ -878,7 +998,7 @@ export default function Home() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(exploreConfig),
+        body: JSON.stringify(demoConfig),
       });
       
       if (!response.ok) {
@@ -889,9 +1009,9 @@ export default function Home() {
       
       // Set link token which will trigger Link to open via the useEffect
       setLinkToken(data.link_token);
-      setLinkTokenConfig(exploreConfig);
+      setLinkTokenConfig(demoConfig);
     } catch (error) {
-      console.error('Error creating Explore Mode link token:', error);
+      console.error('Error creating Demo Mode link token:', error);
       setShowButton(true);
       setShowEventLogs(false);
     }
@@ -903,7 +1023,7 @@ export default function Home() {
     setShowChildModal(false);
     
     // Clean up Plaid item if access token exists
-    if (accessToken || exploreAccessToken) {
+    if (accessToken || demoAccessToken) {
       // Show tidying up message
       setModalState('tidying-up');
       setShowModal(true);
@@ -914,7 +1034,7 @@ export default function Home() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ access_token: accessToken || exploreAccessToken }),
+          body: JSON.stringify({ access_token: accessToken || demoAccessToken }),
         });
       } catch (error) {
         console.error('Error removing item:', error);
@@ -938,10 +1058,12 @@ export default function Home() {
     setShowWelcome(false);
     setShowProductModal(true);
     
-    // Reset Explore Mode state completely
-    setExploreMode(false);
-    setExploreLinkCompleted(false);
-    setExploreAccessToken(null);
+    // Reset Demo Mode state completely
+    setDemoMode(false);
+    setDemoLinkCompleted(false);
+    setDemoAccessToken(null);
+    setShowDemoProductsModal(false);
+    setDemoProductsVisibility({});
   };
 
   const handleZapReset = async () => {
@@ -1150,11 +1272,13 @@ export default function Home() {
           <div className="success-header">
             <div className="success-icon">✓</div>
             <h2>/accounts/get Response</h2>
-            <button className="reset-icon-button" onClick={handleStartOver} title="Reset Session" style={{ background: 'linear-gradient(135deg, #c7659f 0%, #c43d52 100%)' }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2" />
-              </svg>
-            </button>
+            {demoLinkCompleted && (
+              <button className="reset-icon-button" onClick={handleStartOver} title="Reset Session" style={{ background: 'linear-gradient(135deg, #c7659f 0%, #c43d52 100%)' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2" />
+                </svg>
+              </button>
+            )}
           </div>
           <div className="account-data">
             <JsonHighlight 
@@ -1223,11 +1347,13 @@ export default function Home() {
           <div className="success-header">
             <div className="success-icon">✓</div>
             <h2>{apiTitle} Response</h2>
-            <button className="reset-icon-button" onClick={handleStartOver} title="Reset Session" style={{ background: 'linear-gradient(135deg, #c7659f 0%, #c43d52 100%)' }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2" />
-              </svg>
-            </button>
+            {demoLinkCompleted && (
+              <button className="reset-icon-button" onClick={handleStartOver} title="Reset Session" style={{ background: 'linear-gradient(135deg, #c7659f 0%, #c43d52 100%)' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2" />
+                </svg>
+              </button>
+            )}
           </div>
           <div className="account-data">
             <JsonHighlight 
@@ -1235,12 +1361,12 @@ export default function Home() {
               highlightKeys={productConfig?.highlightKeys}
               expandableCopy={{
                 responseData: productData,
-                accessToken: accessToken || exploreAccessToken
+                accessToken: accessToken || demoAccessToken
               }}
             />
           </div>
-          {exploreLinkCompleted ? (
-            // Explore Mode: show "Back to Products" button (reset is in header)
+          {demoLinkCompleted ? (
+            // Demo Mode: show "Back to Products" button (reset is in header)
             <div className="modal-button-row single-button">
               <ArrowButton variant="blue" onClick={handleBackToProducts} />
             </div>
@@ -1278,27 +1404,31 @@ export default function Home() {
       />
       <Modal isVisible={showProductModal}>
         <ProductSelector 
-          products={PRODUCTS_ARRAY} 
+          products={demoLinkCompleted 
+            ? PRODUCTS_ARRAY.filter(p => demoProductsVisibility[p.id])
+            : PRODUCTS_ARRAY} 
           onSelect={handleProductSelect}
-          onSettingsClick={exploreLinkCompleted ? undefined : handleOpenSettings}
+          onSettingsClick={demoLinkCompleted ? undefined : handleOpenSettings}
           hasCustomSettings={hasCustomSettings}
-          onResetClick={exploreLinkCompleted ? handleStartOver : undefined}
+          onResetClick={demoLinkCompleted ? handleStartOver : undefined}
         />
       </Modal>
       <Modal isVisible={showChildModal}>
         {selectedProduct && PRODUCT_CONFIGS[selectedProduct]?.children && (
           <ProductSelector 
-            products={PRODUCT_CONFIGS[selectedProduct].children!} 
+            products={demoLinkCompleted 
+              ? PRODUCT_CONFIGS[selectedProduct].children!.filter(c => demoProductsVisibility[c.id])
+              : PRODUCT_CONFIGS[selectedProduct].children!} 
             onSelect={handleChildProductSelect}
             onBack={() => {
               setShowChildModal(false);
               setShowProductModal(true);
             }}
             showBackButton={true}
-            onSettingsClick={exploreLinkCompleted ? undefined : handleOpenSettings}
+            onSettingsClick={demoLinkCompleted ? undefined : handleOpenSettings}
             hasCustomSettings={hasCustomSettings}
             title={PRODUCT_CONFIGS[selectedProduct].name}
-            onResetClick={exploreLinkCompleted ? handleStartOver : undefined}
+            onResetClick={demoLinkCompleted ? handleStartOver : undefined}
           />
         )}
       </Modal>
@@ -1312,12 +1442,12 @@ export default function Home() {
               label="⚡️ Mode" 
               checked={tempZapMode} 
               onChange={handleToggleZap} 
-              disabled={tempExploreMode} 
+              disabled={tempDemoMode} 
             />
             <SettingsToggle 
-              label="🔍 Mode" 
-              checked={tempExploreMode} 
-              onChange={handleToggleExplore} 
+              label="Demo Mode" 
+              checked={tempDemoMode} 
+              onChange={handleToggleDemo} 
               disabled={tempZapMode} 
             />
             <SettingsToggle 
@@ -1343,6 +1473,55 @@ export default function Home() {
           </div>
         </div>
       </Modal>
+      
+      {/* Demo Mode Product Selection Modal */}
+      <Modal isVisible={showDemoProductsModal}>
+        <div className="demo-products-modal">
+          <div className="settings-header">
+            <h2>Select Products to Demo</h2>
+          </div>
+          <div className="demo-products-grid">
+            {PRODUCTS_ARRAY.map(product => (
+              <div key={product.id} className="product-group-container">
+                <div className="product-group">
+                  <SettingsToggle
+                    label={product.name}
+                    checked={demoProductsVisibility[product.id] || false}
+                    onChange={() => handleToggleDemoProduct(product.id)}
+                    disabled={false}
+                  />
+                  {product.children && (
+                    <div className="product-children-nested">
+                      {product.children.map(child => (
+                        <SettingsToggle
+                          key={child.id}
+                          label={child.shortName || child.name}
+                          checked={demoProductsVisibility[child.id] || false}
+                          onChange={() => handleToggleDemoProduct(child.id)}
+                          disabled={false}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="button-row">
+            <button className="action-button button-red" onClick={handleCancelDemoProducts}>
+              Cancel
+            </button>
+            <button
+              className="action-button button-blue"
+              onClick={handleDemoProductsGo}
+              disabled={!Object.values(demoProductsVisibility).some(v => v)}
+            >
+              Go
+            </button>
+          </div>
+        </div>
+      </Modal>
+      
       <Modal isVisible={showModal && !(showEventLogs && (modalState === 'callback-success' || modalState === 'callback-exit'))}>
         {renderModalContent()}
       </Modal>
