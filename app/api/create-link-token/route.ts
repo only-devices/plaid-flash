@@ -49,8 +49,32 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ link_token: response.link_token });
   } catch (error: any) {
     console.error('Error creating link token:', error);
+    
+    // Extract Plaid error details if available
+    if (error.response) {
+      try {
+        const errorBody = await error.response.json();
+        return NextResponse.json(errorBody, { status: error.response.status });
+      } catch (parseError) {
+        // If we can't parse the response, fall back to generic error
+        return NextResponse.json(
+          { 
+            error_code: 'INTERNAL_SERVER_ERROR',
+            error_message: error.message || 'Failed to create link token',
+            display_message: 'Unable to create link token. Please try again.'
+          },
+          { status: error.response.status || 500 }
+        );
+      }
+    }
+    
+    // Generic error if no response object
     return NextResponse.json(
-      { error: error.message || 'Failed to create link token' },
+      { 
+        error_code: 'INTERNAL_SERVER_ERROR',
+        error_message: error.message || 'Failed to create link token',
+        display_message: 'Unable to create link token. Please try again.'
+      },
       { status: 500 }
     );
   }

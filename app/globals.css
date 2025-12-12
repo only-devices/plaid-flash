@@ -440,6 +440,24 @@ body {
   margin-left: auto;
 }
 
+/* API Error Display (uses success modal structure) */
+.error-icon-large {
+  font-size: 48px;
+  margin-bottom: 8px;
+}
+
+.success-header .status-code {
+  display: inline-block;
+  padding: 4px 12px;
+  background: rgba(235, 203, 139, 0.2);
+  border: 1px solid rgba(235, 203, 139, 0.3);
+  border-radius: 4px;
+  font-size: 14px;
+  color: #ebcb8b;
+  margin-left: 12px;
+  font-weight: 500;
+}
+
 .status-success {
   background: linear-gradient(135deg, #3aae65 0%, #1dac52 100%);
   color: #ffffff;

@@ -22,11 +22,12 @@ export default function Home() {
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
   const [selectedChildProduct, setSelectedChildProduct] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [modalState, setModalState] = useState<'loading' | 'preview-config' | 'callback-success' | 'callback-exit' | 'callback-exit-zap' | 'accounts-data' | 'processing-accounts' | 'processing-product' | 'success' | 'error' | 'zap-mode-results' | 'tidying-up'>('loading');
+  const [modalState, setModalState] = useState<'loading' | 'preview-config' | 'callback-success' | 'callback-exit' | 'callback-exit-zap' | 'accounts-data' | 'processing-accounts' | 'processing-product' | 'success' | 'error' | 'api-error' | 'zap-mode-results' | 'tidying-up'>('loading');
   const [accountsData, setAccountsData] = useState<any>(null);
   const [productData, setProductData] = useState<any>(null);
   const [callbackData, setCallbackData] = useState<any>(null);
   const [errorMessage, setErrorMessage] = useState('');
+  const [errorData, setErrorData] = useState<any>(null);
   const [apiStatusCode, setApiStatusCode] = useState<number>(200);
   const [linkEvents, setLinkEvents] = useState<any[]>([]);
   const [showEventLogs, setShowEventLogs] = useState(false);
@@ -131,7 +132,19 @@ export default function Home() {
         },
         body: JSON.stringify(requestBody),
       });
+      
       const data = await response.json();
+      
+      // Check for API errors
+      if (response.status >= 400) {
+        setErrorData(data);
+        setApiStatusCode(response.status);
+        setModalState('api-error');
+        setShowModal(true);
+        setShowWelcome(false);
+        return;
+      }
+      
       setLinkToken(data.link_token);
     } catch (error) {
       console.error('Error fetching link token:', error);
@@ -241,7 +254,19 @@ export default function Home() {
         },
         body: JSON.stringify(configToUse),
       });
+      
       const data = await response.json();
+      
+      // Check for API errors
+      if (response.status >= 400) {
+        setErrorData(data);
+        setApiStatusCode(response.status);
+        setModalState('api-error');
+        setShowModal(true);
+        setShowWelcome(false);
+        return;
+      }
+      
       setLinkToken(data.link_token);
     } catch (error) {
       console.error('Error fetching link token:', error);
@@ -328,7 +353,19 @@ export default function Home() {
           },
           body: JSON.stringify(parsed),
         });
+        
         const data = await response.json();
+        
+        // Check for API errors
+        if (response.status >= 400) {
+          setErrorData(data);
+          setApiStatusCode(response.status);
+          setModalState('api-error');
+          setShowModal(true);
+          setShowWelcome(false);
+          return;
+        }
+        
         setLinkToken(data.link_token);
       } catch (error) {
         console.error('Error fetching link token:', error);
@@ -519,7 +556,12 @@ export default function Home() {
       });
       
       if (!exchangeResponse.ok) {
-        throw new Error('Failed to exchange token');
+        const errorData = await exchangeResponse.json();
+        setErrorData(errorData);
+        setApiStatusCode(exchangeResponse.status);
+        setModalState('api-error');
+        setShowModal(true);
+        return;
       }
 
       const { access_token } = await exchangeResponse.json();
@@ -543,6 +585,16 @@ export default function Home() {
         });
 
         const accountsData = await accountsResponse.json();
+        
+        // Check for API errors
+        if (accountsResponse.status >= 400) {
+          setErrorData(accountsData);
+          setApiStatusCode(accountsResponse.status);
+          setModalState('api-error');
+          setShowModal(true);
+          return;
+        }
+        
         setAccountsData(accountsData);
         setApiStatusCode(accountsResponse.status);
       }
@@ -569,6 +621,16 @@ export default function Home() {
       });
 
       const productData = await productResponse.json();
+      
+      // Check for API errors
+      if (productResponse.status >= 400) {
+        setErrorData(productData);
+        setApiStatusCode(productResponse.status);
+        setModalState('api-error');
+        setShowModal(true);
+        return;
+      }
+      
       setProductData(productData);
       
       // Show Zap Mode results (side-by-side modals)
@@ -632,7 +694,11 @@ export default function Home() {
       });
       
       if (!exchangeResponse.ok) {
-        throw new Error('Failed to exchange token');
+        const errorData = await exchangeResponse.json();
+        setErrorData(errorData);
+        setApiStatusCode(exchangeResponse.status);
+        setModalState('api-error');
+        return;
       }
 
       const { access_token } = await exchangeResponse.json();
@@ -678,6 +744,15 @@ export default function Home() {
         });
 
         const productData = await productResponse.json();
+        
+        // Check for API errors
+        if (productResponse.status >= 400) {
+          setErrorData(productData);
+          setApiStatusCode(productResponse.status);
+          setModalState('api-error');
+          return;
+        }
+        
         setProductData(productData);
         setApiStatusCode(productResponse.status);
         setModalState('success');
@@ -693,7 +768,15 @@ export default function Home() {
 
         const accountsData = await accountsResponse.json();
         
-        // Update state to show accounts data (even if error)
+        // Check for API errors
+        if (accountsResponse.status >= 400) {
+          setErrorData(accountsData);
+          setApiStatusCode(accountsResponse.status);
+          setModalState('api-error');
+          return;
+        }
+        
+        // Update state to show accounts data
         setAccountsData(accountsData);
         setApiStatusCode(accountsResponse.status);
         setModalState('accounts-data');
@@ -746,7 +829,15 @@ export default function Home() {
 
       const productData = await productResponse.json();
       
-      // Update state to show product data (even if error)
+      // Check for API errors
+      if (productResponse.status >= 400) {
+        setErrorData(productData);
+        setApiStatusCode(productResponse.status);
+        setModalState('api-error');
+        return;
+      }
+      
+      // Update state to show product data
       setProductData(productData);
       setApiStatusCode(productResponse.status);
       setModalState('success');
@@ -812,6 +903,15 @@ export default function Home() {
         });
 
         accountsData = await accountsResponse.json();
+        
+        // Check for API errors
+        if (accountsResponse.status >= 400) {
+          setErrorData(accountsData);
+          setApiStatusCode(accountsResponse.status);
+          setModalState('api-error');
+          return;
+        }
+        
         setAccountsData(accountsData);
       }
 
@@ -831,7 +931,15 @@ export default function Home() {
 
       const productData = await productResponse.json();
       
-      // Update state to show product data (even if error)
+      // Check for API errors
+      if (productResponse.status >= 400) {
+        setErrorData(productData);
+        setApiStatusCode(productResponse.status);
+        setModalState('api-error');
+        return;
+      }
+      
+      // Update state to show product data
       setProductData(productData);
       setApiStatusCode(productResponse.status);
       setModalState('success');
@@ -1001,11 +1109,16 @@ export default function Home() {
         body: JSON.stringify(demoConfig),
       });
       
-      if (!response.ok) {
-        throw new Error('Failed to create link token');
-      }
-      
       const data = await response.json();
+      
+      // Check for API errors
+      if (response.status >= 400) {
+        setErrorData(data);
+        setApiStatusCode(response.status);
+        setModalState('api-error');
+        setShowModal(true);
+        return;
+      }
       
       // Set link token which will trigger Link to open via the useEffect
       setLinkToken(data.link_token);
@@ -1057,6 +1170,8 @@ export default function Home() {
     setShowButton(false);
     setShowWelcome(false);
     setShowProductModal(true);
+    setErrorData(null);
+    setErrorMessage('');
     
     // Reset Demo Mode state completely
     setDemoMode(false);
@@ -1333,6 +1448,27 @@ export default function Home() {
           <div className="error-icon">⚠️</div>
           <p>{errorMessage}</p>
           <p className="error-subtext">Restarting...</p>
+        </div>
+      );
+    }
+
+    if (modalState === 'api-error' && errorData) {
+      return (
+        <div className="modal-success">
+          <div className="success-header">
+            <div className="error-icon-large">⚠️</div>
+            <h2>API Error Response</h2>
+            {apiStatusCode && <span className="status-code">{apiStatusCode}</span>}
+          </div>
+          <div className="account-data">
+            <JsonHighlight 
+              data={errorData} 
+              showCopyButton={true}
+            />
+          </div>
+          <div className="modal-button-row single-button">
+            <ArrowButton variant="red" direction="back" onClick={handleStartOver} />
+          </div>
         </div>
       );
     }

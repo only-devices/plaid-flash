@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   description: 'A lightweight application for connecting bank accounts using Plaid Link',
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
