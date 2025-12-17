@@ -58,6 +58,7 @@ export default function Home() {
   const [demoAccessToken, setDemoAccessToken] = useState<string | null>(null);
   const [showDemoProductsModal, setShowDemoProductsModal] = useState(false);
   const [demoProductsVisibility, setDemoProductsVisibility] = useState<Record<string, boolean>>({});
+  const [isDemoModeStarting, setIsDemoModeStarting] = useState(false);
 
   // Initialize all products as visible for Demo Mode
   const initializeProductVisibility = () => {
@@ -244,6 +245,14 @@ export default function Home() {
     // In Zap Mode, configOverride is passed directly to avoid state timing issues
     setShowModal(false);
     
+    // If we're starting Demo Mode, trigger the UI changes now
+    if (isDemoModeStarting) {
+      setShowButton(false);
+      setShowEventLogs(true);
+      setEventLogsPosition('right');
+      setIsDemoModeStarting(false); // Reset the flag
+    }
+    
     try {
       // Use the configOverride if provided (Zap Mode), otherwise use linkTokenConfig state
       const configToUse = configOverride || linkTokenConfig;
@@ -291,6 +300,11 @@ export default function Home() {
     setModalState('loading');
     setIsEditingConfig(false);
     setConfigError(null);
+    
+    // Reset demo mode starting flag if it was set
+    if (isDemoModeStarting) {
+      setIsDemoModeStarting(false);
+    }
     
     // If we came from child selection, go back to child modal
     // Otherwise go back to parent product modal
@@ -1049,85 +1063,57 @@ export default function Home() {
   };
 
   const handleDemoModeStart = async () => {
-    // Hide main button
-    setShowButton(false);
+    // Build products array dynamically based on enabled products
+    const enabledProductIds = Object.keys(demoProductsVisibility).filter(
+      id => demoProductsVisibility[id]
+    );
     
-    // Show event logs immediately
-    setShowEventLogs(true);
-    setEventLogsPosition('right');
+    const productsSet = new Set<string>();
     
-    try {
-      // Build products array dynamically based on enabled products
-      const enabledProductIds = Object.keys(demoProductsVisibility).filter(
-        id => demoProductsVisibility[id]
-      );
+    enabledProductIds.forEach(productId => {
+      // Check if it's a parent product
+      const parentProduct = PRODUCTS_ARRAY.find(p => p.id === productId);
       
-      const productsSet = new Set<string>();
-      
-      enabledProductIds.forEach(productId => {
-        // Check if it's a parent product
-        const parentProduct = PRODUCTS_ARRAY.find(p => p.id === productId);
+      if (parentProduct) {
+        // It's a parent - add its products
+        parentProduct.products.forEach(p => productsSet.add(p));
+      } else {
+        // It's a child - find its parent
+        const parent = PRODUCTS_ARRAY.find(p => 
+          p.children?.some(c => c.id === productId)
+        );
         
-        if (parentProduct) {
-          // It's a parent - add its products
-          parentProduct.products.forEach(p => productsSet.add(p));
-        } else {
-          // It's a child - find its parent
-          const parent = PRODUCTS_ARRAY.find(p => 
-            p.children?.some(c => c.id === productId)
-          );
-          
-          if (parent) {
-            // Add parent's products
-            parent.products.forEach(p => productsSet.add(p));
-          }
+        if (parent) {
+          // Add parent's products
+          parent.products.forEach(p => productsSet.add(p));
         }
-      });
-      
-      // Convert set to array (automatically de-duplicated)
-      const products = Array.from(productsSet);
-      
-      // Create Link token with dynamically built products
-      const demoConfig = {
-        link_customization_name: 'flash',
-        user: {
-          client_user_id: 'flash_user_id01',
-          phone_number: '+14155550011'
-        },
-        client_name: 'Plaid Flash',
-        products,
-        days_requested: 14,
-        country_codes: ['US'],
-        language: 'en'
-      };
-      
-      const response = await fetch('/api/create-link-token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(demoConfig),
-      });
-      
-      const data = await response.json();
-      
-      // Check for API errors
-      if (response.status >= 400) {
-        setErrorData(data);
-        setApiStatusCode(response.status);
-        setModalState('api-error');
-        setShowModal(true);
-        return;
       }
-      
-      // Set link token which will trigger Link to open via the useEffect
-      setLinkToken(data.link_token);
-      setLinkTokenConfig(demoConfig);
-    } catch (error) {
-      console.error('Error creating Demo Mode link token:', error);
-      setShowButton(true);
-      setShowEventLogs(false);
-    }
+    });
+    
+    // Convert set to array (automatically de-duplicated)
+    const products = Array.from(productsSet);
+    
+    // Create Link token config with dynamically built products
+    const demoConfig = {
+      link_customization_name: 'flash',
+      user: {
+        client_user_id: 'flash_user_id01',
+        phone_number: '+14155550011'
+      },
+      client_name: 'Plaid Flash',
+      products,
+      days_requested: 14,
+      country_codes: ['US'],
+      language: 'en'
+    };
+    
+    // Set flag that we're starting demo mode
+    setIsDemoModeStarting(true);
+    
+    // Show config preview modal - when user clicks Proceed, it will continue with demo mode
+    setLinkTokenConfig(demoConfig);
+    setModalState('preview-config');
+    setShowModal(true);
   };
 
   const handleStartOver = async () => {
