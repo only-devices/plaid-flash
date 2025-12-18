@@ -1102,7 +1102,9 @@ export default function Home() {
       },
       client_name: 'Plaid Flash',
       products,
-      days_requested: 14,
+      transactions: {
+        days_requested: 14
+      },
       country_codes: ['US'],
       language: 'en'
     };

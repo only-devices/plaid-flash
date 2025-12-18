@@ -14,7 +14,7 @@ const plaid = new PlaidApi(configuration);
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { products, required_if_supported_products, days_requested, ...otherParams } = body;
+    const { products, required_if_supported_products, ...otherParams } = body;
 
     // Default to auth if no products specified
     const productsArray = products || ['auth'];
@@ -33,14 +33,7 @@ export async function POST(request: NextRequest) {
       ...(requiredProducts.length > 0 && { required_if_supported_products: requiredProducts })
     };
 
-    // Add transactions-specific params if provided
-    if (days_requested !== undefined) {
-      linkTokenConfig.transactions = {
-        days_requested: days_requested
-      };
-    }
-
-    // Merge any other additional params
+    // Merge any other additional params (including transactions if provided)
     Object.assign(linkTokenConfig, otherParams);
 
     const response = await plaid.linkTokenCreate(linkTokenConfig);

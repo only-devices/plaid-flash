@@ -108,7 +108,9 @@ export const PRODUCT_CONFIGS: Record<string, ProductConfig> = {
         apiEndpoint: '/api/transactions-sync',
         apiTitle: '/transactions/sync',
         additionalLinkParams: {
-          days_requested: 14
+          transactions: {
+            days_requested: 14
+          }
         },
         highlightKeys: ['added', 'has_more', 'modified', 'next_cursor', 'removed', 'transactions_update_status']
       }
