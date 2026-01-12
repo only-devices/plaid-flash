@@ -10,6 +10,7 @@ import JsonHighlight from '@/components/JsonHighlight';
 import CodeEditor from '@uiw/react-textarea-code-editor';
 import SettingsToggle from '@/components/SettingsToggle';
 import ArrowButton from '@/components/ArrowButton';
+import WebhookPanel from '@/components/WebhookPanel';
 import { PRODUCTS_ARRAY, PRODUCT_CONFIGS, getProductConfigById } from '@/lib/productConfig';
 
 export default function Home() {
@@ -70,6 +71,11 @@ export default function Home() {
   const [editedUserCreateConfig, setEditedUserCreateConfig] = useState('');
   const [userCreateConfigError, setUserCreateConfigError] = useState<string | null>(null);
 
+  // Webhook state
+  const [webhooks, setWebhooks] = useState<any[]>([]);
+  const [showWebhookPanel, setShowWebhookPanel] = useState(false);
+  const [webhookUrl, setWebhookUrl] = useState<string | null>(null);
+
   // Initialize all products as visible for Demo Mode
   const initializeProductVisibility = () => {
     const visibility: Record<string, boolean> = {};
@@ -118,6 +124,67 @@ export default function Home() {
       eventLogsRef.current.scrollTop = eventLogsRef.current.scrollHeight;
     }
   }, [linkEvents]);
+
+  // SSE connection for real-time webhook updates
+  useEffect(() => {
+    let eventSource: EventSource | null = null;
+
+    // Fetch webhook URL on mount
+    const initWebhooks = async () => {
+      try {
+        const response = await fetch('/api/webhook-url');
+        const data = await response.json();
+        if (data.webhookUrl) {
+          setWebhookUrl(data.webhookUrl);
+          console.log('Webhook URL:', data.webhookUrl);
+        } else if (data.message) {
+          console.log('Webhook status:', data.message);
+        }
+      } catch (error) {
+        console.error('Error fetching webhook URL:', error);
+      }
+
+      // Connect to SSE stream for webhook updates
+      try {
+        eventSource = new EventSource('/api/webhooks-stream');
+        
+        eventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            
+            if (data.type === 'connected') {
+              // Initial connection - load existing webhooks
+              if (data.webhooks && data.webhooks.length > 0) {
+                setWebhooks(data.webhooks);
+              }
+            } else if (data.type === 'heartbeat') {
+              // Heartbeat - ignore
+            } else {
+              // New webhook received
+              setWebhooks(prev => [data, ...prev]);
+            }
+          } catch (error) {
+            console.error('Error parsing SSE data:', error);
+          }
+        };
+
+        eventSource.onerror = (error) => {
+          console.error('SSE connection error:', error);
+          // EventSource will automatically try to reconnect
+        };
+      } catch (error) {
+        console.error('Error connecting to SSE:', error);
+      }
+    };
+
+    initWebhooks();
+
+    return () => {
+      if (eventSource) {
+        eventSource.close();
+      }
+    };
+  }, []);
 
   const fetchLinkToken = async (productId: string) => {
     try {
@@ -416,6 +483,11 @@ export default function Home() {
     // Add additional link params if they exist
     if (productConfig.additionalLinkParams) {
       Object.assign(fullConfig, productConfig.additionalLinkParams);
+    }
+
+    // Add webhook URL for products that require it
+    if (productConfig.requiresWebhook && webhookUrl) {
+      fullConfig.webhook = webhookUrl;
     }
 
     setLinkTokenConfig(fullConfig);
@@ -902,6 +974,8 @@ export default function Home() {
         public_token,
         metadata
       });
+      // Show webhook panel after callback
+      setShowWebhookPanel(true);
     }
   }, [zapMode, demoMode, handleZapModeSuccess]);
 
@@ -917,6 +991,7 @@ export default function Home() {
     setShowModal(false);
     setEventLogsPosition('right');
     setIsTransitioningModals(false);
+    setShowWebhookPanel(false);
 
     // Get the effective product ID to check product type
     const effectiveProductId = selectedChildProduct || selectedProduct;
@@ -1282,6 +1357,10 @@ export default function Home() {
       err: err || null,
       metadata
     });
+    // Show webhook panel after callback (except in Zap mode)
+    if (!zapMode) {
+      setShowWebhookPanel(true);
+    }
   }, [zapMode]);
 
   const onEvent = useCallback((eventName: string, metadata: any) => {
@@ -1314,6 +1393,7 @@ export default function Home() {
     setModalState('loading');
     setShowButton(true);
     setShowWelcome(false);
+    setShowWebhookPanel(false);
     // Clear link token and selected products to prevent auto-opening
     setLinkToken(null);
     setSelectedProduct(null);
@@ -1468,6 +1548,10 @@ export default function Home() {
     setIsEditingUserCreateConfig(false);
     setEditedUserCreateConfig('');
     setUserCreateConfigError(null);
+    
+    // Reset webhook panel (but keep SSE connection open)
+    setShowWebhookPanel(false);
+    setWebhooks([]);
   };
 
   const handleZapReset = async () => {
@@ -1976,8 +2060,14 @@ export default function Home() {
               label="CRA: Use Legacy user_token" 
               checked={tempUseLegacyUserToken} 
               onChange={handleToggleLegacyUserToken} 
-              disabled={false}
+              disabled={true}
             />
+            <div className="settings-info-row">
+              <span className="settings-info-label">Webhook URL</span>
+              <span className="settings-info-value">
+                {webhookUrl ? webhookUrl : 'Not active'}
+              </span>
+            </div>
           </div>
           <div className="button-row">
             <button className="action-button button-red" onClick={handleCancelSettings}>
@@ -2177,6 +2267,9 @@ export default function Home() {
           Woah. Do That Again.
         </button>
       )}
+
+      {/* Webhook Panel - Shows after onSuccess/onExit callbacks */}
+      <WebhookPanel webhooks={webhooks} visible={showWebhookPanel} />
     </div>
   );
 }

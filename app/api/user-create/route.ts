@@ -16,9 +16,6 @@ export async function POST(request: NextRequest) {
       ...userCreateParams,
     };
 
-    // Debug: log the full config being sent to Plaid
-    console.log('User create config being sent:', JSON.stringify(requestBody, null, 2));
-
     // Make direct fetch call to bypass plaid-fetch's field stripping
     // (plaid-fetch v1.0.2 doesn't support the 'identity' field in UserCreateRequest)
     const response = await fetch(

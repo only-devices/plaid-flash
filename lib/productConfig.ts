@@ -13,6 +13,7 @@ export interface ProductConfig {
   highlightKeys?: string[];
   icon?: string;
   isCRA?: boolean; // CRA products use user_id/user_token instead of access_token
+  requiresWebhook?: boolean; // Products that need a webhook URL (like CRA)
 }
 
 export const PRODUCT_CONFIGS: Record<string, ProductConfig> = {
@@ -224,9 +225,9 @@ export const PRODUCT_CONFIGS: Record<string, ProductConfig> = {
         isCRA: true,
         highlightKeys: ['report'],
         additionalLinkParams: {
-          webhook: 'https://your-webhook-url.com',
           consumer_report_permissible_purpose: 'ACCOUNT_REVIEW_CREDIT'
-        }
+        },
+        requiresWebhook: true
       },
       {
         id: 'cra-income-insights',
@@ -241,9 +242,9 @@ export const PRODUCT_CONFIGS: Record<string, ProductConfig> = {
         isCRA: true,
         highlightKeys: ['income_insights'],
         additionalLinkParams: {
-          webhook: 'https://your-webhook-url.com',
           consumer_report_permissible_purpose: 'ACCOUNT_REVIEW_CREDIT'
-        }
+        },
+        requiresWebhook: true
       },
       {
         id: 'cra-partner-insights',
@@ -258,9 +259,9 @@ export const PRODUCT_CONFIGS: Record<string, ProductConfig> = {
         isCRA: true,
         highlightKeys: ['partner_insights'],
         additionalLinkParams: {
-          webhook: 'https://your-webhook-url.com',
           consumer_report_permissible_purpose: 'ACCOUNT_REVIEW_CREDIT'
-        }
+        },
+        requiresWebhook: true
       },
       {
         id: 'cra-cashflow-insights',
@@ -275,9 +276,9 @@ export const PRODUCT_CONFIGS: Record<string, ProductConfig> = {
         isCRA: true,
         highlightKeys: ['cashflow_insights'],
         additionalLinkParams: {
-          webhook: 'https://your-webhook-url.com',
           consumer_report_permissible_purpose: 'ACCOUNT_REVIEW_CREDIT'
-        }
+        },
+        requiresWebhook: true
       }
     ]
   }

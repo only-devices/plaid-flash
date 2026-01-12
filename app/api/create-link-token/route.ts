@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { products, required_if_supported_products, user_id, user_token, user, ...otherParams } = body;
+    const { products, required_if_supported_products, user_id, user_token, user, webhook, ...otherParams } = body;
 
     // Default to auth if no products specified
     const productsArray = products || ['auth'];
@@ -32,11 +32,15 @@ export async function POST(request: NextRequest) {
       linkTokenConfig.user_token = user_token;
     }
 
+    // Add webhook URL if provided
+    if (webhook) {
+      linkTokenConfig.webhook = webhook;
+    }
+
     // Merge any other additional params (including transactions if provided)
     Object.assign(linkTokenConfig, otherParams);
 
-    // Debug: log the full config being sent to Plaid
-    console.log('Link token config being sent:', JSON.stringify(linkTokenConfig, null, 2));
+
 
     // Make direct fetch call to bypass plaid-fetch's field stripping
     // (plaid-fetch v1.0.2 doesn't support user_id in LinkTokenCreateRequest)
