@@ -22,7 +22,7 @@ export default function Home() {
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
   const [selectedChildProduct, setSelectedChildProduct] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [modalState, setModalState] = useState<'loading' | 'preview-config' | 'callback-success' | 'callback-exit' | 'callback-exit-zap' | 'accounts-data' | 'processing-accounts' | 'processing-product' | 'success' | 'error' | 'api-error' | 'zap-mode-results' | 'tidying-up'>('loading');
+  const [modalState, setModalState] = useState<'loading' | 'preview-user-create' | 'preview-config' | 'callback-success' | 'callback-exit' | 'callback-exit-zap' | 'accounts-data' | 'processing-accounts' | 'processing-product' | 'processing-user-create' | 'success' | 'error' | 'api-error' | 'zap-mode-results' | 'tidying-up'>('loading');
   const [accountsData, setAccountsData] = useState<any>(null);
   const [productData, setProductData] = useState<any>(null);
   const [callbackData, setCallbackData] = useState<any>(null);
@@ -50,7 +50,9 @@ export default function Home() {
   const [tempEmbeddedMode, setTempEmbeddedMode] = useState(false);
   const [tempLayerMode, setTempLayerMode] = useState(false);
   const [tempDemoMode, setTempDemoMode] = useState(false);
-  const hasCustomSettings = zapMode || embeddedMode || layerMode || demoMode;
+  const [useLegacyUserToken, setUseLegacyUserToken] = useState(false);
+  const [tempUseLegacyUserToken, setTempUseLegacyUserToken] = useState(false);
+  const hasCustomSettings = zapMode || embeddedMode || layerMode || demoMode || useLegacyUserToken;
   const [showZapResetButton, setShowZapResetButton] = useState(false);
   
   // Demo Mode state
@@ -59,6 +61,14 @@ export default function Home() {
   const [showDemoProductsModal, setShowDemoProductsModal] = useState(false);
   const [demoProductsVisibility, setDemoProductsVisibility] = useState<Record<string, boolean>>({});
   const [isDemoModeStarting, setIsDemoModeStarting] = useState(false);
+
+  // CRA Mode state
+  const [userCreateConfig, setUserCreateConfig] = useState<any>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userToken, setUserToken] = useState<string | null>(null);
+  const [isEditingUserCreateConfig, setIsEditingUserCreateConfig] = useState(false);
+  const [editedUserCreateConfig, setEditedUserCreateConfig] = useState('');
+  const [userCreateConfigError, setUserCreateConfigError] = useState<string | null>(null);
 
   // Initialize all products as visible for Demo Mode
   const initializeProductVisibility = () => {
@@ -206,6 +216,12 @@ export default function Home() {
       return;
     }
 
+    // For CRA products, show user create modal first
+    if (productConfig.isCRA) {
+      showUserCreatePreview(productId);
+      return;
+    }
+
     // Build the FULL configuration that will be sent to Plaid
     const fullConfig: any = {
       link_customization_name: 'flash',
@@ -237,6 +253,211 @@ export default function Home() {
     } else {
       setModalState('preview-config');
       setShowModal(true);
+    }
+  };
+
+  const showUserCreatePreview = (productId: string) => {
+    const productConfig = getProductConfigById(productId);
+    if (!productConfig) {
+      return;
+    }
+
+    // Build the /user/create configuration based on legacy toggle
+    let userConfig: any;
+    
+    if (useLegacyUserToken) {
+      // Legacy format using consumer_report_user_identity
+      userConfig = {
+        client_user_id: 'flash_cra_user_' + Date.now(),
+        consumer_report_user_identity: {
+          first_name: 'Test',
+          last_name: 'User',
+          ssn_last_4: '1234',
+          date_of_birth: '1970-01-31',
+          phone_numbers: ['+14155550011'],
+          emails: ['test@email.com'],
+          primary_address: {
+            street: '100 Grey St',
+            city: 'San Francisco',
+            region: 'CA',
+            country: 'US',
+            postal_code: '94109'
+          }
+        }
+      };
+    } else {
+      // New format using identity object
+      userConfig = {
+        client_user_id: 'flash_cra_user_' + Date.now(),
+        identity: {
+          name: {
+            given_name: 'Test',
+            family_name: 'User'
+          },
+          date_of_birth: '1970-01-31',
+          emails: [
+            { data: 'test@email.com', primary: true }
+          ],
+          phone_numbers: [
+            { data: '+14155550011', primary: true }
+          ],
+          addresses: [
+            {
+              street_1: '100 Grey St',
+              city: 'San Francisco',
+              region: 'CA',
+              country: 'US',
+              postal_code: '94109',
+              primary: true
+            }
+          ],
+          id_numbers: [
+            { value: '1234', type: 'us_ssn_last_4' }
+          ]
+        }
+      };
+    }
+
+    setUserCreateConfig(userConfig);
+    setModalState('preview-user-create');
+    setShowModal(true);
+  };
+
+  const handleProceedWithUserCreate = async (configOverride?: any) => {
+    // User approved the /user/create config, now call the API
+    setModalState('processing-user-create');
+
+    try {
+      const configToUse = configOverride || userCreateConfig;
+      const response = await fetch('/api/user-create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...configToUse,
+          useLegacyUserToken
+        }),
+      });
+      
+      const data = await response.json();
+      
+      // Check for API errors
+      if (response.status >= 400) {
+        setErrorData(data);
+        setApiStatusCode(response.status);
+        setModalState('api-error');
+        return;
+      }
+      
+      // Store the user_id or user_token from the response
+      const newUserId = data.user_id || null;
+      const newUserToken = data.user_token || null;
+      
+      if (newUserId) {
+        setUserId(newUserId);
+      }
+      if (newUserToken) {
+        setUserToken(newUserToken);
+      }
+      
+      // Now show the link token config preview - pass values directly since state update is async
+      showCRALinkConfigPreview(newUserId, newUserToken);
+    } catch (error: any) {
+      console.error('Error creating user:', error);
+      setErrorMessage('Failed to create user. Please try again.');
+      setModalState('error');
+      
+      // Reset after a delay
+      setTimeout(() => {
+        setShowModal(false);
+        setModalState('loading');
+        setShowProductModal(true);
+      }, 3000);
+    }
+  };
+
+  const showCRALinkConfigPreview = (userIdParam?: string | null, userTokenParam?: string | null) => {
+    const effectiveProductId = selectedChildProduct || selectedProduct;
+    const productConfig = getProductConfigById(effectiveProductId!);
+    if (!productConfig) {
+      return;
+    }
+
+    // Use passed params or fall back to state (for cases where state is already set)
+    const effectiveUserId = userIdParam ?? userId;
+    const effectiveUserToken = userTokenParam ?? userToken;
+
+    // Build the FULL configuration for CRA products
+    const fullConfig: any = {
+      link_customization_name: 'flash',
+      user: {
+        client_user_id: userCreateConfig?.client_user_id || 'flash_cra_user_01',
+        phone_number: '+14155550011'
+      },
+      client_name: 'Plaid Flash',
+      products: productConfig.products,
+      country_codes: ['US'],
+      language: 'en'
+    };
+
+    // Add user_id or user_token based on what we have
+    if (effectiveUserId) {
+      fullConfig.user_id = effectiveUserId;
+    } else if (effectiveUserToken) {
+      fullConfig.user_token = effectiveUserToken;
+    }
+
+    // Add required_if_supported_products if not empty
+    if (productConfig.required_if_supported && productConfig.required_if_supported.length > 0) {
+      fullConfig.required_if_supported_products = productConfig.required_if_supported;
+    }
+
+    // Add additional link params if they exist
+    if (productConfig.additionalLinkParams) {
+      Object.assign(fullConfig, productConfig.additionalLinkParams);
+    }
+
+    setLinkTokenConfig(fullConfig);
+    setModalState('preview-config');
+  };
+
+  const handleGoBackToUserCreate = () => {
+    // Go back to user create preview
+    setModalState('preview-user-create');
+    setIsEditingConfig(false);
+    setConfigError(null);
+  };
+
+  const handleToggleUserCreateEditMode = () => {
+    if (!isEditingUserCreateConfig) {
+      // Entering edit mode - populate editedUserCreateConfig with current config
+      setEditedUserCreateConfig(JSON.stringify(userCreateConfig, null, 2));
+      setUserCreateConfigError(null);
+    }
+    setIsEditingUserCreateConfig(!isEditingUserCreateConfig);
+  };
+
+  const handleCancelUserCreateEdit = () => {
+    setIsEditingUserCreateConfig(false);
+    setUserCreateConfigError(null);
+    setEditedUserCreateConfig('');
+  };
+
+  const handleSaveAndProceedUserCreate = async () => {
+    try {
+      // Validate JSON first
+      const parsed = JSON.parse(editedUserCreateConfig);
+      
+      // Update config and reset edit state
+      setUserCreateConfig(parsed);
+      setUserCreateConfigError(null);
+      setIsEditingUserCreateConfig(false);
+      
+      // Proceed with user creation
+      handleProceedWithUserCreate(parsed);
+    } catch (error: any) {
+      setUserCreateConfigError(`Invalid JSON: ${error.message}`);
     }
   };
 
@@ -407,6 +628,7 @@ export default function Home() {
     setTempEmbeddedMode(embeddedMode);
     setTempLayerMode(layerMode);
     setTempDemoMode(demoMode);
+    setTempUseLegacyUserToken(useLegacyUserToken);
     // Hide product modal and show settings modal
     setShowProductModal(false);
     setShowChildModal(false);
@@ -433,6 +655,7 @@ export default function Home() {
     setEmbeddedMode(tempEmbeddedMode);
     setLayerMode(tempLayerMode);
     setDemoMode(tempDemoMode);
+    setUseLegacyUserToken(tempUseLegacyUserToken);
     
     // Close settings modal
     setShowSettingsModal(false);
@@ -481,6 +704,10 @@ export default function Home() {
     if (newValue) {
       setTempZapMode(false);
     }
+  };
+
+  const handleToggleLegacyUserToken = () => {
+    setTempUseLegacyUserToken(!tempUseLegacyUserToken);
   };
 
   const handleToggleDemoProduct = (productId: string) => {
@@ -690,7 +917,75 @@ export default function Home() {
     setShowModal(false);
     setEventLogsPosition('right');
     setIsTransitioningModals(false);
+
+    // Get the effective product ID to check product type
+    const effectiveProductId = selectedChildProduct || selectedProduct;
+    const productConfig = getProductConfigById(effectiveProductId!);
     
+    // Check if this is a CRA product
+    if (productConfig?.isCRA) {
+      // CRA products: skip access_token exchange, call product endpoint directly with user_id/user_token
+      setModalState('processing-product');
+      setShowModal(true);
+
+      try {
+        if (!productConfig.apiEndpoint) {
+          throw new Error('Product API endpoint not configured');
+        }
+
+        // Build request body with user_id or user_token
+        const requestBody: any = {};
+        if (userId) {
+          requestBody.user_id = userId;
+        } else if (userToken) {
+          requestBody.user_token = userToken;
+        }
+        
+        if (productConfig.additionalApiParams) {
+          Object.assign(requestBody, productConfig.additionalApiParams);
+        }
+        
+        const productResponse = await fetch(productConfig.apiEndpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+        });
+
+        const productData = await productResponse.json();
+        
+        // Check for API errors
+        if (productResponse.status >= 400) {
+          setErrorData(productData);
+          setApiStatusCode(productResponse.status);
+          setModalState('api-error');
+          return;
+        }
+        
+        setProductData(productData);
+        setApiStatusCode(productResponse.status);
+        setModalState('success');
+      } catch (error) {
+        console.error('Error fetching CRA product data:', error);
+        setErrorMessage('We encountered an issue fetching CRA data. Please try again.');
+        setModalState('error');
+        
+        // Reset after a delay
+        setTimeout(() => {
+          setShowModal(false);
+          setCallbackData(null);
+          setProductData(null);
+          setModalState('loading');
+          setShowButton(true);
+          setShowWelcome(false);
+          setShowProductModal(true);
+        }, 3000);
+      }
+      return;
+    }
+    
+    // Non-CRA products: proceed with normal flow
     // Show processing state for accounts
     setModalState('processing-accounts');
     setShowModal(true);
@@ -729,8 +1024,6 @@ export default function Home() {
         return;
       }
 
-      // Get the effective product ID to check if we should skip accounts/get
-      const effectiveProductId = selectedChildProduct || selectedProduct;
       const skipAccountsGet = effectiveProductId === 'signal-balance';
 
       if (skipAccountsGet) {
@@ -1167,6 +1460,14 @@ export default function Home() {
     setDemoAccessToken(null);
     setShowDemoProductsModal(false);
     setDemoProductsVisibility({});
+    
+    // Reset CRA state
+    setUserCreateConfig(null);
+    setUserId(null);
+    setUserToken(null);
+    setIsEditingUserCreateConfig(false);
+    setEditedUserCreateConfig('');
+    setUserCreateConfigError(null);
   };
 
   const handleZapReset = async () => {
@@ -1248,11 +1549,91 @@ export default function Home() {
   };
 
   const renderModalContent = () => {
-    if (modalState === 'preview-config' && linkTokenConfig) {
+    // CRA: User Create Preview Modal
+    if (modalState === 'preview-user-create' && userCreateConfig) {
+      const effectiveProductId = selectedChildProduct || selectedProduct;
+      const productConfig = getProductConfigById(effectiveProductId!);
+      const isCRA = productConfig?.isCRA;
+      
       return (
         <div className="modal-success">
           <div className="success-header">
-            <h2>Here&apos;s the /link/token/create configuration that will be used:</h2>
+            <h2>Step 1: Here&apos;s the /user/create configuration:</h2>
+          </div>
+          {!isEditingUserCreateConfig ? (
+            <>
+              <div className="account-data config-data-with-edit">
+                <button 
+                  className="config-edit-icon" 
+                  onClick={handleToggleUserCreateEditMode}
+                  title="Edit configuration"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                  </svg>
+                </button>
+                <JsonHighlight data={userCreateConfig} />
+              </div>
+              <div className="modal-button-row two-buttons">
+                <ArrowButton variant="red" direction="back" onClick={handleGoBackToProducts} />
+                <ArrowButton variant="blue" onClick={() => handleProceedWithUserCreate()} />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="code-editor-container">
+                <CodeEditor
+                  value={editedUserCreateConfig}
+                  language="json"
+                  onChange={(e) => setEditedUserCreateConfig(e.target.value)}
+                  padding={15}
+                  data-color-mode="dark"
+                  style={{
+                    fontSize: 13,
+                    fontFamily: 'Monaco, Menlo, Ubuntu Mono, Consolas, monospace',
+                    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                    borderRadius: '12px',
+                    minHeight: '400px',
+                    maxHeight: '500px',
+                    overflowY: 'auto',
+                  }}
+                />
+                {userCreateConfigError && (
+                  <div className="config-error">
+                    {userCreateConfigError}
+                  </div>
+                )}
+              </div>
+              <div className="modal-button-row two-buttons">
+                <ArrowButton variant="red" direction="back" onClick={handleCancelUserCreateEdit} />
+                <ArrowButton variant="blue" onClick={handleSaveAndProceedUserCreate} />
+              </div>
+            </>
+          )}
+        </div>
+      );
+    }
+
+    if (modalState === 'processing-user-create') {
+      return (
+        <div className="modal-loading">
+          <div className="spinner"></div>
+          <p>Creating user...</p>
+        </div>
+      );
+    }
+
+    if (modalState === 'preview-config' && linkTokenConfig) {
+      // Check if this is a CRA product to modify the back button behavior
+      const effectiveProductId = selectedChildProduct || selectedProduct;
+      const productConfig = getProductConfigById(effectiveProductId!);
+      const isCRA = productConfig?.isCRA;
+      
+      return (
+        <div className="modal-success">
+          <div className="success-header">
+            <h2>{isCRA ? 'Step 2: ' : ''}Here&apos;s the /link/token/create configuration that will be used:</h2>
           </div>
           {!isEditingConfig ? (
             <>
@@ -1270,8 +1651,8 @@ export default function Home() {
                 <JsonHighlight data={linkTokenConfig} />
               </div>
               <div className="modal-button-row two-buttons">
-                <ArrowButton variant="red" direction="back" onClick={handleGoBackToProducts} />
-                <ArrowButton variant="blue" onClick={() => handleProceedWithConfig()} />
+                <ArrowButton variant="red" direction="back" onClick={isCRA ? handleGoBackToUserCreate : handleGoBackToProducts} />
+                <ArrowButton variant="blue" onClick={() => handleProceedWithConfig(linkTokenConfig)} />
               </div>
             </>
           ) : (
@@ -1300,7 +1681,7 @@ export default function Home() {
                 )}
               </div>
               <div className="modal-button-row two-buttons">
-                <ArrowButton variant="red" direction="back" onClick={handleCancelEdit} />
+                <ArrowButton variant="red" direction="back" onClick={isCRA ? handleCancelEdit : handleCancelEdit} />
                 <ArrowButton variant="blue" onClick={handleSaveAndProceed} />
               </div>
             </>
@@ -1465,6 +1846,7 @@ export default function Home() {
       const effectiveProductId = selectedChildProduct || selectedProduct;
       const productConfig = getProductConfigById(effectiveProductId!);
       const apiTitle = productConfig?.apiTitle || 'API Response';
+      const isCRA = productConfig?.isCRA;
       
       return (
         <div className="modal-success">
@@ -1483,7 +1865,12 @@ export default function Home() {
             <JsonHighlight 
               data={productData} 
               highlightKeys={productConfig?.highlightKeys}
-              expandableCopy={{
+              expandableCopy={isCRA ? {
+                responseData: productData,
+                userId: userId,
+                userToken: userToken,
+                isCRA: true
+              } : {
                 responseData: productData,
                 accessToken: accessToken || demoAccessToken
               }}
@@ -1584,6 +1971,12 @@ export default function Home() {
               checked={tempLayerMode} 
               onChange={handleToggleLayer} 
               disabled={true}
+            />
+            <SettingsToggle 
+              label="CRA: Use Legacy user_token" 
+              checked={tempUseLegacyUserToken} 
+              onChange={handleToggleLegacyUserToken} 
+              disabled={false}
             />
           </div>
           <div className="button-row">

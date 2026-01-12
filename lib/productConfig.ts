@@ -12,6 +12,7 @@ export interface ProductConfig {
   additionalApiParams?: Record<string, any>;
   highlightKeys?: string[];
   icon?: string;
+  isCRA?: boolean; // CRA products use user_id/user_token instead of access_token
 }
 
 export const PRODUCT_CONFIGS: Record<string, ProductConfig> = {
@@ -200,6 +201,85 @@ export const PRODUCT_CONFIGS: Record<string, ProductConfig> = {
     apiTitle: '/liabilities/get',
     highlightKeys: ['liabilities'],
     icon: '/icons/liabilities.png'
+  },
+  cra: {
+    id: 'cra',
+    name: 'CRA',
+    products: ['cra_base_report'],
+    required_if_supported: [],
+    gradient: 'linear-gradient(135deg, #2d9b83 0%, #1a6b5c 100%)',
+    icon: '/icons/cra.png',
+    isCRA: true,
+    children: [
+      {
+        id: 'cra-base-report',
+        name: 'Base Report',
+        shortName: 'Base Report',
+        products: ['cra_base_report'],
+        required_if_supported: [],
+        gradient: 'linear-gradient(135deg, #2d9b83 0%, #1a6b5c 100%)',
+        icon: '/icons/cra.png',
+        apiEndpoint: '/api/cra-base-report-get',
+        apiTitle: '/cra/check_report/base_report/get',
+        isCRA: true,
+        highlightKeys: ['report'],
+        additionalLinkParams: {
+          webhook: 'https://your-webhook-url.com',
+          consumer_report_permissible_purpose: 'ACCOUNT_REVIEW_CREDIT'
+        }
+      },
+      {
+        id: 'cra-income-insights',
+        name: 'Income Insights',
+        shortName: 'Income',
+        products: ['cra_base_report','cra_income_insights'],
+        required_if_supported: [],
+        gradient: 'linear-gradient(135deg, #2d9b83 0%, #1a6b5c 100%)',
+        icon: '/icons/cra.png',
+        apiEndpoint: '/api/cra-income-insights-get',
+        apiTitle: '/cra/check_report/income_insights/get',
+        isCRA: true,
+        highlightKeys: ['income_insights'],
+        additionalLinkParams: {
+          webhook: 'https://your-webhook-url.com',
+          consumer_report_permissible_purpose: 'ACCOUNT_REVIEW_CREDIT'
+        }
+      },
+      {
+        id: 'cra-partner-insights',
+        name: 'Partner Insights',
+        shortName: 'Partner',
+        products: ['cra_base_report','cra_partner_insights'],
+        required_if_supported: [],
+        gradient: 'linear-gradient(135deg, #2d9b83 0%, #1a6b5c 100%)',
+        icon: '/icons/cra.png',
+        apiEndpoint: '/api/cra-partner-insights-get',
+        apiTitle: '/cra/check_report/partner_insights/get',
+        isCRA: true,
+        highlightKeys: ['partner_insights'],
+        additionalLinkParams: {
+          webhook: 'https://your-webhook-url.com',
+          consumer_report_permissible_purpose: 'ACCOUNT_REVIEW_CREDIT'
+        }
+      },
+      {
+        id: 'cra-cashflow-insights',
+        name: 'Cashflow Insights',
+        shortName: 'Cashflow',
+        products: ['cra_base_report','cra_cashflow_insights'],
+        required_if_supported: [],
+        gradient: 'linear-gradient(135deg, #2d9b83 0%, #1a6b5c 100%)',
+        icon: '/icons/cra.png',
+        apiEndpoint: '/api/cra-cashflow-insights-get',
+        apiTitle: '/cra/check_report/cashflow_insights/get',
+        isCRA: true,
+        highlightKeys: ['cashflow_insights'],
+        additionalLinkParams: {
+          webhook: 'https://your-webhook-url.com',
+          consumer_report_permissible_purpose: 'ACCOUNT_REVIEW_CREDIT'
+        }
+      }
+    ]
   }
 };
 
