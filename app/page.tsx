@@ -76,6 +76,13 @@ export default function Home() {
   const [showWebhookPanel, setShowWebhookPanel] = useState(false);
   const [webhookUrl, setWebhookUrl] = useState<string | null>(null);
 
+  // Embedded Link state
+  const [embeddedLinkActive, setEmbeddedLinkActive] = useState(false);
+  const [embeddedInstitutionSelected, setEmbeddedInstitutionSelected] = useState(false);
+  const [embeddedLinkReady, setEmbeddedLinkReady] = useState(false);
+  const embeddedContainerRef = useRef<HTMLDivElement>(null);
+  const embeddedLinkHandlerRef = useRef<any>(null);
+
   // Initialize all products as visible for Demo Mode
   const initializeProductVisibility = () => {
     const visibility: Record<string, boolean> = {};
@@ -292,10 +299,9 @@ export default function Home() {
     // Build the FULL configuration that will be sent to Plaid
     const fullConfig: any = {
       link_customization_name: 'flash',
-      user: {
-        client_user_id: 'flash_user_id01',
-        phone_number: '+14155550011'
-      },
+      user: embeddedMode 
+        ? { client_user_id: 'flash_user_id01' }
+        : { client_user_id: 'flash_user_id01', phone_number: '+14155550011' },
       client_name: 'Plaid Flash',
       products: productConfig.products,
       country_codes: ['US'],
@@ -458,10 +464,9 @@ export default function Home() {
     // Build the FULL configuration for CRA products
     const fullConfig: any = {
       link_customization_name: 'flash',
-      user: {
-        client_user_id: userCreateConfig?.client_user_id || 'flash_cra_user_01',
-        phone_number: '+14155550011'
-      },
+      user: embeddedMode
+        ? { client_user_id: userCreateConfig?.client_user_id || 'flash_cra_user_01' }
+        : { client_user_id: userCreateConfig?.client_user_id || 'flash_cra_user_01', phone_number: '+14155550011' },
       client_name: 'Plaid Flash',
       products: productConfig.products,
       country_codes: ['US'],
@@ -756,10 +761,7 @@ export default function Home() {
   };
 
   const handleToggleEmbedded = () => {
-    // Disabled for now, but handler exists
-    if (!true) { // Will enable later
-      setTempEmbeddedMode(!tempEmbeddedMode);
-    }
+    setTempEmbeddedMode(!tempEmbeddedMode);
   };
 
   const handleToggleLayer = () => {
@@ -1400,6 +1402,15 @@ export default function Home() {
     setSelectedChildProduct(null);
     setLinkEvents([]);
     setShowProductModal(true);
+
+    // Reset embedded Link state
+    setEmbeddedLinkActive(false);
+    setEmbeddedInstitutionSelected(false);
+    setEmbeddedLinkReady(false);
+    if (embeddedLinkHandlerRef.current?.destroy) {
+      embeddedLinkHandlerRef.current.destroy();
+      embeddedLinkHandlerRef.current = null;
+    }
   };
 
   const config = {
@@ -1411,11 +1422,111 @@ export default function Home() {
 
   const { open, ready } = usePlaidLink(config);
 
+  // Open embedded Link - just shows the container, the useEffect below handles initialization
+  const openEmbeddedLink = useCallback(() => {
+    if (!linkToken) return;
+    // Show the embedded container - the useEffect will handle initialization
+    setEmbeddedLinkActive(true);
+  }, [linkToken]);
+
+  // Initialize embedded Link when container becomes available
+  useEffect(() => {
+    if (!embeddedLinkActive || !linkToken) return;
+    
+    // Don't reinitialize if already initialized
+    if (embeddedLinkHandlerRef.current) return;
+
+    // Wait for next frame to ensure DOM is updated and ref is populated
+    const timeoutId = setTimeout(() => {
+      console.log('[Embedded] Attempting to initialize...');
+      
+      if (!embeddedContainerRef.current) {
+        console.error('[Embedded] Container ref not available');
+        return;
+      }
+      console.log('[Embedded] Container ref available:', embeddedContainerRef.current);
+
+      const Plaid = (window as any).Plaid;
+      console.log('[Embedded] Plaid SDK:', Plaid);
+      console.log('[Embedded] Plaid.createEmbedded:', Plaid?.createEmbedded);
+      
+      if (!Plaid || !Plaid.createEmbedded) {
+        console.error('[Embedded] Plaid.createEmbedded is not available');
+        return;
+      }
+
+      console.log('[Embedded] Calling Plaid.createEmbedded with token:', linkToken?.substring(0, 20) + '...');
+      
+      embeddedLinkHandlerRef.current = Plaid.createEmbedded({
+        token: linkToken,
+        onSuccess: (public_token: string, metadata: any) => {
+          console.log('[Embedded] onSuccess fired');
+          // Clean up and hide container
+          setEmbeddedLinkActive(false);
+          setEmbeddedInstitutionSelected(false);
+          setEmbeddedLinkReady(false);
+          if (embeddedLinkHandlerRef.current?.destroy) {
+            embeddedLinkHandlerRef.current.destroy();
+            embeddedLinkHandlerRef.current = null;
+          }
+          onSuccess(public_token, metadata);
+        },
+        onExit: (err: any, metadata: any) => {
+          console.log('[Embedded] onExit fired', err);
+          // Clean up and hide container
+          setEmbeddedLinkActive(false);
+          setEmbeddedInstitutionSelected(false);
+          setEmbeddedLinkReady(false);
+          if (embeddedLinkHandlerRef.current?.destroy) {
+            embeddedLinkHandlerRef.current.destroy();
+            embeddedLinkHandlerRef.current = null;
+          }
+          onExit(err, metadata);
+        },
+        onEvent: (eventName: string, metadata: any) => {
+          console.log('[Embedded] onEvent fired:', eventName, metadata);
+          // When institution is selected, hide overlay and let Link continue
+          if (eventName === 'SELECT_INSTITUTION') {
+            setEmbeddedInstitutionSelected(true);
+          }
+          onEvent(eventName, metadata);
+        },
+      }, embeddedContainerRef.current);
+      
+      console.log('[Embedded] createEmbedded returned:', embeddedLinkHandlerRef.current);
+      
+      // Wait for the Plaid Link iframe to load before showing the container
+      if (embeddedLinkHandlerRef.current && embeddedContainerRef.current) {
+        const checkForIframe = () => {
+          const iframe = embeddedContainerRef.current?.querySelector('iframe[title="Plaid Link"]');
+          if (iframe) {
+            console.log('[Embedded] Found iframe, waiting for load...');
+            iframe.addEventListener('load', () => {
+              console.log('[Embedded] Iframe loaded, showing container');
+              setEmbeddedLinkReady(true);
+            }, { once: true });
+            // Fallback in case load already fired
+            if ((iframe as HTMLIFrameElement).contentDocument?.readyState === 'complete') {
+              console.log('[Embedded] Iframe already loaded');
+              setEmbeddedLinkReady(true);
+            }
+          } else {
+            // Iframe not found yet, check again
+            setTimeout(checkForIframe, 50);
+          }
+        };
+        checkForIframe();
+      }
+    }, 100);
+
+    return () => clearTimeout(timeoutId);
+  }, [embeddedLinkActive, linkToken, onSuccess, onExit, onEvent]);
+
   // Auto-open Link when ready after product selection
   useEffect(() => {
     // In Demo Mode, we can open Link without a selected product
     // In normal mode, we need a selected product
-    const shouldOpenLink = ready && linkToken && !showModal && !showChildModal && !showProductModal && !showZapResetButton && 
+    const shouldOpenLink = ready && linkToken && !showModal && !showChildModal && !showProductModal && !showZapResetButton && !embeddedLinkActive &&
       (demoMode || selectedProduct || selectedChildProduct);
     
     if (shouldOpenLink) {
@@ -1425,9 +1536,16 @@ export default function Home() {
         setShowEventLogs(true);
       }
       setShowProductModal(false); // Ensure product modal is hidden
-      open();
+      
+      if (embeddedMode) {
+        // Use embedded Link
+        openEmbeddedLink();
+      } else {
+        // Use regular Link
+        open();
+      }
     }
-  }, [ready, linkToken, selectedProduct, selectedChildProduct, showModal, showChildModal, showProductModal, showZapResetButton, zapMode, demoMode, open]);
+  }, [ready, linkToken, selectedProduct, selectedChildProduct, showModal, showChildModal, showProductModal, showZapResetButton, zapMode, demoMode, embeddedMode, embeddedLinkActive, open, openEmbeddedLink]);
 
   const handleButtonClick = () => {
     // Show product selection modal instead of opening Link directly
@@ -1469,10 +1587,9 @@ export default function Home() {
     // Create Link token config with dynamically built products
     const demoConfig = {
       link_customization_name: 'flash',
-      user: {
-        client_user_id: 'flash_user_id01',
-        phone_number: '+14155550011'
-      },
+      user: embeddedMode
+        ? { client_user_id: 'flash_user_id01' }
+        : { client_user_id: 'flash_user_id01', phone_number: '+14155550011' },
       client_name: 'Plaid Flash',
       products,
       transactions: {
@@ -1552,6 +1669,15 @@ export default function Home() {
     // Reset webhook panel (but keep SSE connection open)
     setShowWebhookPanel(false);
     setWebhooks([]);
+
+    // Reset embedded Link state
+    setEmbeddedLinkActive(false);
+    setEmbeddedInstitutionSelected(false);
+    setEmbeddedLinkReady(false);
+    if (embeddedLinkHandlerRef.current?.destroy) {
+      embeddedLinkHandlerRef.current.destroy();
+      embeddedLinkHandlerRef.current = null;
+    }
   };
 
   const handleZapReset = async () => {
@@ -1591,6 +1717,15 @@ export default function Home() {
     setShowButton(false);
     setShowWelcome(false);
     setShowProductModal(true);
+
+    // Reset embedded Link state
+    setEmbeddedLinkActive(false);
+    setEmbeddedInstitutionSelected(false);
+    setEmbeddedLinkReady(false);
+    if (embeddedLinkHandlerRef.current?.destroy) {
+      embeddedLinkHandlerRef.current.destroy();
+      embeddedLinkHandlerRef.current = null;
+    }
   };
 
   const handleCopyAccessToken = async (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -2048,7 +2183,7 @@ export default function Home() {
               label="Embedded Mode" 
               checked={tempEmbeddedMode} 
               onChange={handleToggleEmbedded} 
-              disabled={true} 
+              disabled={false}
             />
             <SettingsToggle 
               label="Layer" 
@@ -2131,6 +2266,14 @@ export default function Home() {
       <Modal isVisible={showModal && !(showEventLogs && (modalState === 'callback-success' || modalState === 'callback-exit'))}>
         {renderModalContent()}
       </Modal>
+
+      {/* Embedded Link Container - Shows when embedded mode is active, hidden after institution selection */}
+      {embeddedLinkActive && !embeddedInstitutionSelected && (
+        <>
+          <div className="embedded-link-overlay" />
+          <div className={`embedded-link-container ${embeddedLinkReady ? 'ready' : ''}`} ref={embeddedContainerRef} />
+        </>
+      )}
       
       {/* Event Logs Modal - Shows side by side with Plaid Link */}
       <div className={`event-logs-container ${showEventLogs ? 'visible' : ''} event-logs-${eventLogsPosition} ${isTransitioningModals ? 'fading-out' : ''}`}>

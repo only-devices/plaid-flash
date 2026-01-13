@@ -2,9 +2,17 @@
 // Only used in development mode
 // Uses the official @ngrok/ngrok SDK
 
-let tunnelUrl: string | null = null;
-let tunnelPromise: Promise<string | null> | null = null;
-let listener: any = null;
+// Use globalThis to persist state across Next.js hot reloads
+const globalForNgrok = globalThis as unknown as {
+  ngrokTunnelUrl: string | null;
+  ngrokTunnelPromise: Promise<string | null> | null;
+  ngrokListener: any;
+};
+
+// Initialize globals if not set
+globalForNgrok.ngrokTunnelUrl = globalForNgrok.ngrokTunnelUrl ?? null;
+globalForNgrok.ngrokTunnelPromise = globalForNgrok.ngrokTunnelPromise ?? null;
+globalForNgrok.ngrokListener = globalForNgrok.ngrokListener ?? null;
 
 export async function startTunnel(port: number = 3000): Promise<string | null> {
   // Only run in development
@@ -22,21 +30,22 @@ export async function startTunnel(port: number = 3000): Promise<string | null> {
   }
 
   // Return cached URL if already connected
-  if (tunnelUrl) {
-    return tunnelUrl;
+  if (globalForNgrok.ngrokTunnelUrl) {
+    console.log(`[ngrok] Reusing existing tunnel: ${globalForNgrok.ngrokTunnelUrl}`);
+    return globalForNgrok.ngrokTunnelUrl;
   }
 
   // Return existing promise if tunnel is being started
-  if (tunnelPromise) {
-    return tunnelPromise;
+  if (globalForNgrok.ngrokTunnelPromise) {
+    return globalForNgrok.ngrokTunnelPromise;
   }
 
   // Start new tunnel
-  tunnelPromise = createTunnel(port, authtoken);
-  tunnelUrl = await tunnelPromise;
-  tunnelPromise = null;
+  globalForNgrok.ngrokTunnelPromise = createTunnel(port, authtoken);
+  globalForNgrok.ngrokTunnelUrl = await globalForNgrok.ngrokTunnelPromise;
+  globalForNgrok.ngrokTunnelPromise = null;
   
-  return tunnelUrl;
+  return globalForNgrok.ngrokTunnelUrl;
 }
 
 async function createTunnel(port: number, authtoken: string): Promise<string | null> {
@@ -47,12 +56,12 @@ async function createTunnel(port: number, authtoken: string): Promise<string | n
     console.log(`[ngrok] Starting tunnel to localhost:${port}...`);
     
     // Create a forward listener with authtoken
-    listener = await ngrok.forward({
+    globalForNgrok.ngrokListener = await ngrok.forward({
       addr: port,
       authtoken: authtoken,
     });
     
-    const url = listener.url();
+    const url = globalForNgrok.ngrokListener.url();
     console.log(`[ngrok] Tunnel established: ${url}`);
     
     return url;
@@ -71,22 +80,22 @@ async function createTunnel(port: number, authtoken: string): Promise<string | n
 }
 
 export async function stopTunnel(): Promise<void> {
-  if (listener) {
+  if (globalForNgrok.ngrokListener) {
     try {
-      await listener.close();
+      await globalForNgrok.ngrokListener.close();
       console.log('[ngrok] Tunnel disconnected');
     } catch (error) {
       console.error('[ngrok] Error disconnecting:', error);
     }
-    listener = null;
-    tunnelUrl = null;
+    globalForNgrok.ngrokListener = null;
+    globalForNgrok.ngrokTunnelUrl = null;
   }
 }
 
 export function getTunnelUrl(): string | null {
-  return tunnelUrl;
+  return globalForNgrok.ngrokTunnelUrl;
 }
 
 export function isTunnelActive(): boolean {
-  return tunnelUrl !== null;
+  return globalForNgrok.ngrokTunnelUrl !== null;
 }
