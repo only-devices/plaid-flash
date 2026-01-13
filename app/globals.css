@@ -2371,8 +2371,8 @@ body:has(.webhook-panel-container) .event-logs-scroll {
   padding: 24px 32px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  height: 280px;
-  max-height: 280px;
+  height: 380px;
+  max-height: 380px;
   display: flex;
   flex-direction: column;
 }
@@ -2404,6 +2404,8 @@ body:has(.webhook-panel-container) .event-logs-scroll {
   position: relative;
   flex: 1;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
 
@@ -2447,8 +2449,10 @@ body:has(.webhook-panel-container) .event-logs-scroll {
 
 .webhook-scroll {
   overflow-y: auto;
+  overflow-x: hidden;
   flex: 1;
   min-height: 0;
+  max-height: 100%;
   border-radius: 12px;
   padding-top: 8px;
   padding-right: 0px;

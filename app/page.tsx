@@ -53,7 +53,9 @@ export default function Home() {
   const [tempDemoMode, setTempDemoMode] = useState(false);
   const [useLegacyUserToken, setUseLegacyUserToken] = useState(false);
   const [tempUseLegacyUserToken, setTempUseLegacyUserToken] = useState(false);
-  const hasCustomSettings = zapMode || embeddedMode || layerMode || demoMode || useLegacyUserToken;
+  const [rememberedUserExperience, setRememberedUserExperience] = useState(false);
+  const [tempRememberedUserExperience, setTempRememberedUserExperience] = useState(false);
+  const hasCustomSettings = zapMode || embeddedMode || layerMode || demoMode || useLegacyUserToken || rememberedUserExperience;
   const [showZapResetButton, setShowZapResetButton] = useState(false);
   
   // Demo Mode state
@@ -299,9 +301,9 @@ export default function Home() {
     // Build the FULL configuration that will be sent to Plaid
     const fullConfig: any = {
       link_customization_name: 'flash',
-      user: embeddedMode 
-        ? { client_user_id: 'flash_user_id01' }
-        : { client_user_id: 'flash_user_id01', phone_number: '+14155550011' },
+      user: rememberedUserExperience 
+        ? { client_user_id: 'flash_user_id01', phone_number: '+14155550011' }
+        : { client_user_id: 'flash_user_id01' },
       client_name: 'Plaid Flash',
       products: productConfig.products,
       country_codes: ['US'],
@@ -464,9 +466,7 @@ export default function Home() {
     // Build the FULL configuration for CRA products
     const fullConfig: any = {
       link_customization_name: 'flash',
-      user: embeddedMode
-        ? { client_user_id: userCreateConfig?.client_user_id || 'flash_cra_user_01' }
-        : { client_user_id: userCreateConfig?.client_user_id || 'flash_cra_user_01', phone_number: '+14155550011' },
+      user: { client_user_id: userCreateConfig?.client_user_id || 'flash_cra_user_01', phone_number: '+14155550011' },
       client_name: 'Plaid Flash',
       products: productConfig.products,
       country_codes: ['US'],
@@ -733,6 +733,7 @@ export default function Home() {
     setLayerMode(tempLayerMode);
     setDemoMode(tempDemoMode);
     setUseLegacyUserToken(tempUseLegacyUserToken);
+    setRememberedUserExperience(tempRememberedUserExperience);
     
     // Close settings modal
     setShowSettingsModal(false);
@@ -762,6 +763,10 @@ export default function Home() {
 
   const handleToggleEmbedded = () => {
     setTempEmbeddedMode(!tempEmbeddedMode);
+  };
+
+  const handleToggleRememberedUser = () => {
+    setTempRememberedUserExperience(!tempRememberedUserExperience);
   };
 
   const handleToggleLayer = () => {
@@ -976,10 +981,14 @@ export default function Home() {
         public_token,
         metadata
       });
-      // Show webhook panel after callback
-      setShowWebhookPanel(true);
+      // Show webhook panel only for products that require webhooks (CRA products)
+      const effectiveProductId = selectedChildProduct || selectedProduct;
+      const productConfig = getProductConfigById(effectiveProductId!);
+      if (productConfig?.requiresWebhook) {
+        setShowWebhookPanel(true);
+      }
     }
-  }, [zapMode, demoMode, handleZapModeSuccess]);
+  }, [zapMode, demoMode, handleZapModeSuccess, selectedChildProduct, selectedProduct]);
 
   const handleProceedWithSuccess = async () => {
     // Start fade-out animation for both modals
@@ -1359,11 +1368,15 @@ export default function Home() {
       err: err || null,
       metadata
     });
-    // Show webhook panel after callback (except in Zap mode)
+    // Show webhook panel only for products that require webhooks (CRA products), except in Zap mode
     if (!zapMode) {
-      setShowWebhookPanel(true);
+      const effectiveProductId = selectedChildProduct || selectedProduct;
+      const productConfig = getProductConfigById(effectiveProductId!);
+      if (productConfig?.requiresWebhook) {
+        setShowWebhookPanel(true);
+      }
     }
-  }, [zapMode]);
+  }, [zapMode, selectedChildProduct, selectedProduct]);
 
   const onEvent = useCallback((eventName: string, metadata: any) => {
     // Add event to the logs
@@ -1587,7 +1600,7 @@ export default function Home() {
     // Create Link token config with dynamically built products
     const demoConfig = {
       link_customization_name: 'flash',
-      user: embeddedMode
+      user: rememberedUserExperience
         ? { client_user_id: 'flash_user_id01' }
         : { client_user_id: 'flash_user_id01', phone_number: '+14155550011' },
       client_name: 'Plaid Flash',
@@ -2183,6 +2196,12 @@ export default function Home() {
               label="Embedded Mode" 
               checked={tempEmbeddedMode} 
               onChange={handleToggleEmbedded} 
+              disabled={false}
+            />
+            <SettingsToggle 
+              label="Remembered User Experience" 
+              checked={tempRememberedUserExperience} 
+              onChange={handleToggleRememberedUser} 
               disabled={false}
             />
             <SettingsToggle 
