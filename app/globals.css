@@ -1140,7 +1140,7 @@ body {
 }
 
 .product-card.has-icon .product-card-name {
-  text-align: right;
+  text-align: left;
 }
 
 .product-card:hover .product-card-icon {

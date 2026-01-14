@@ -17,62 +17,121 @@ export interface ProductConfig {
 }
 
 export const PRODUCT_CONFIGS: Record<string, ProductConfig> = {
-  auth: {
-    id: 'auth',
-    name: 'Auth',
-    products: ['auth'],
-    required_if_supported: ['identity'],
-    gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
-    apiEndpoint: '/api/auth-get',
-    apiTitle: '/auth/get',
-    highlightKeys: ['numbers'],
-    icon: '/icons/auth.png'
-  },
-  identity: {
-    id: 'identity',
-    name: 'Identity',
-    products: ['identity'],
+  payments: {
+    id: 'payments',
+    name: 'Payments and Funding',
+    shortName: 'Payments',
+    products: ['auth', 'signal', 'identity'],
     required_if_supported: [],
     gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
-    icon: '/icons/identity.png',
+    icon: '/icons/payments.png',
     children: [
       {
-        id: 'identity-get',
-        name: 'Identity Get',
-        shortName: 'Get',
-        products: ['identity'],
-        required_if_supported: [],
+        id: 'auth',
+        name: 'Auth',
+        products: ['auth'],
+        required_if_supported: ['identity'],
         gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
-        icon: '/icons/identity.png',
-        apiEndpoint: '/api/identity-get',
-        apiTitle: '/identity/get',
-        highlightKeys: ['owners']
+        apiEndpoint: '/api/auth-get',
+        apiTitle: '/auth/get',
+        highlightKeys: ['numbers'],
+        icon: '/icons/auth.png'
       },
       {
-        id: 'identity-match',
-        name: 'Identity Match',
-        shortName: 'Match',
+        id: 'investments-move',
+        name: 'Investments Move',
+        products: ['investments_auth'],
+        required_if_supported: [],
+        gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
+        apiEndpoint: '/api/investments-auth-get',
+        apiTitle: '/investments/auth/get',
+        highlightKeys: ['numbers'],
+        icon: '/icons/investments-move.png'
+      },
+      {
+        id: 'signal',
+        name: 'Signal',
+        products: ['signal'],
+        required_if_supported: [],
+        gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
+        icon: '/icons/signal.png',
+        children: [
+          {
+            id: 'signal-evaluate',
+            name: 'Signal Evaluate',
+            shortName: 'Evaluate',
+            products: ['signal'],
+            required_if_supported: [],
+            gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
+            icon: '/icons/signal.png',
+            apiEndpoint: '/api/signal-evaluate',
+            apiTitle: '/signal/evaluate',
+            additionalApiParams: {
+              client_transaction_id: 'txn_flash_' + Date.now(),
+              amount: 100.00
+            }
+          },
+          {
+            id: 'signal-balance',
+            name: 'Signal Balance',
+            shortName: 'Balance',
+            products: ['signal'],
+            required_if_supported: [],
+            gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
+            icon: '/icons/balance.png',
+            apiEndpoint: '/api/signal-balance',
+            apiTitle: '/accounts/balance/get',
+            highlightKeys: ['balances']
+          }
+        ]
+      },
+      {
+        id: 'identity',
+        name: 'Identity',
         products: ['identity'],
         required_if_supported: [],
         gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
         icon: '/icons/identity.png',
-        apiEndpoint: '/api/identity-match',
-        apiTitle: '/identity/match',
-        additionalApiParams: {
-          user: {
-            legal_name: 'Jane Doe',
-            phone_number: '+1 415 555 0122',
-            email_address: 'jane.doe@example.com',
-            address: {
-              street: '123 Main St',
-              city: 'San Francisco',
-              region: 'CA',
-              postal_code: '94105',
-              country: 'US'
-            }
+        children: [
+          {
+            id: 'identity-get',
+            name: 'Identity Get',
+            shortName: 'Get',
+            products: ['identity'],
+            required_if_supported: [],
+            gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
+            icon: '/icons/identity.png',
+            apiEndpoint: '/api/identity-get',
+            apiTitle: '/identity/get',
+            highlightKeys: ['owners']
+          },
+          {
+            id: 'identity-match',
+            name: 'Identity Match',
+            shortName: 'Match',
+            products: ['identity'],
+            required_if_supported: [],
+            gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
+            icon: '/icons/identity.png',
+            apiEndpoint: '/api/identity-match',
+            apiTitle: '/identity/match',
+            additionalApiParams: {
+              user: {
+                legal_name: 'Jane Doe',
+                phone_number: '+1 415 555 0122',
+                email_address: 'jane.doe@example.com',
+                address: {
+                  street: '123 Main St',
+                  city: 'San Francisco',
+                  region: 'CA',
+                  postal_code: '94105',
+                  country: 'US'
+                }
+              }
+            },
+            highlightKeys: ['legal_name', 'phone_number', 'email_address', 'address']
           }
-        },
-        highlightKeys: ['legal_name', 'phone_number', 'email_address', 'address']
+        ]
       }
     ]
   },
@@ -115,43 +174,6 @@ export const PRODUCT_CONFIGS: Record<string, ProductConfig> = {
           }
         },
         highlightKeys: ['added', 'has_more', 'modified', 'next_cursor', 'removed', 'transactions_update_status']
-      }
-    ]
-  },
-  signal: {
-    id: 'signal',
-    name: 'Signal',
-    products: ['signal'],
-    required_if_supported: [],
-    gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
-    icon: '/icons/signal.png',
-    children: [
-      {
-        id: 'signal-evaluate',
-        name: 'Signal Evaluate',
-        shortName: 'Evaluate',
-        products: ['signal'],
-        required_if_supported: [],
-        gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
-        icon: '/icons/signal.png',
-        apiEndpoint: '/api/signal-evaluate',
-        apiTitle: '/signal/evaluate',
-        additionalApiParams: {
-          client_transaction_id: 'txn_flash_' + Date.now(),
-          amount: 100.00
-        }
-      },
-      {
-        id: 'signal-balance',
-        name: 'Signal Balance',
-        shortName: 'Balance',
-        products: ['signal'],
-        required_if_supported: [],
-        gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
-        icon: '/icons/balance.png',
-        apiEndpoint: '/api/signal-balance',
-        apiTitle: '/accounts/balance/get',
-        highlightKeys: ['balances']
       }
     ]
   },
@@ -286,13 +308,19 @@ export const PRODUCT_CONFIGS: Record<string, ProductConfig> = {
 
 export const PRODUCTS_ARRAY = Object.values(PRODUCT_CONFIGS);
 
-// Helper to get config by ID (searches both parent and children)
+// Helper to get config by ID (searches parent, children, and grandchildren)
 export const getProductConfigById = (id: string): ProductConfig | undefined => {
   for (const config of PRODUCTS_ARRAY) {
     if (config.id === id) return config;
     if (config.children) {
-      const child = config.children.find(c => c.id === id);
-      if (child) return child;
+      for (const child of config.children) {
+        if (child.id === id) return child;
+        // Search grandchildren (3rd level)
+        if (child.children) {
+          const grandchild = child.children.find(gc => gc.id === id);
+          if (grandchild) return grandchild;
+        }
+      }
     }
   }
   return undefined;

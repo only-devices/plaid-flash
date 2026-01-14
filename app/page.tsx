@@ -20,8 +20,10 @@ export default function Home() {
   const [showModal, setShowModal] = useState(false);
   const [showProductModal, setShowProductModal] = useState(false);
   const [showChildModal, setShowChildModal] = useState(false);
+  const [showGrandchildModal, setShowGrandchildModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
   const [selectedChildProduct, setSelectedChildProduct] = useState<string | null>(null);
+  const [selectedGrandchildProduct, setSelectedGrandchildProduct] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [modalState, setModalState] = useState<'loading' | 'preview-user-create' | 'preview-config' | 'callback-success' | 'callback-exit' | 'callback-exit-zap' | 'accounts-data' | 'processing-accounts' | 'processing-product' | 'processing-user-create' | 'success' | 'error' | 'api-error' | 'zap-mode-results' | 'tidying-up'>('loading');
   const [accountsData, setAccountsData] = useState<any>(null);
@@ -261,6 +263,7 @@ export default function Home() {
       // Direct product
       setSelectedProduct(productId);
       setSelectedChildProduct(null);
+      setSelectedGrandchildProduct(null);
       setShowProductModal(false);
       
       // If in Demo Mode with Link completed, call API directly
@@ -274,15 +277,41 @@ export default function Home() {
   };
 
   const handleChildProductSelect = (childId: string) => {
-    setSelectedChildProduct(childId);
-    setShowChildModal(false);
+    // Get the child config to check if it has grandchildren
+    const parentConfig = PRODUCT_CONFIGS[selectedProduct!];
+    const childConfig = parentConfig?.children?.find(c => c.id === childId);
+    
+    // If child has grandchildren (3rd level), show grandchild modal
+    if (childConfig?.children && childConfig.children.length > 0) {
+      setSelectedChildProduct(childId);
+      setShowChildModal(false);
+      setShowGrandchildModal(true);
+    } else {
+      // No grandchildren - this is a leaf product
+      setSelectedChildProduct(childId);
+      setSelectedGrandchildProduct(null);
+      setShowChildModal(false);
+      
+      // If in Demo Mode with Link completed, call API directly
+      if (demoLinkCompleted) {
+        handleDemoModeApiCall(childId);
+      } else {
+        // Normal mode: show preview modal
+        showLinkConfigPreview(childId);
+      }
+    }
+  };
+
+  const handleGrandchildProductSelect = (grandchildId: string) => {
+    setSelectedGrandchildProduct(grandchildId);
+    setShowGrandchildModal(false);
     
     // If in Demo Mode with Link completed, call API directly
     if (demoLinkCompleted) {
-      handleDemoModeApiCall(childId);
+      handleDemoModeApiCall(grandchildId);
     } else {
       // Normal mode: show preview modal
-      showLinkConfigPreview(childId);
+      showLinkConfigPreview(grandchildId);
     }
   };
 
@@ -453,7 +482,7 @@ export default function Home() {
   };
 
   const showCRALinkConfigPreview = (userIdParam?: string | null, userTokenParam?: string | null) => {
-    const effectiveProductId = selectedChildProduct || selectedProduct;
+    const effectiveProductId = selectedGrandchildProduct || selectedChildProduct || selectedProduct;
     const productConfig = getProductConfigById(effectiveProductId!);
     if (!productConfig) {
       return;
@@ -604,12 +633,17 @@ export default function Home() {
       setIsDemoModeStarting(false);
     }
     
-    // If we came from child selection, go back to child modal
-    // Otherwise go back to parent product modal
-    if (selectedChildProduct) {
+    // Navigate back through the 3-level hierarchy
+    if (selectedGrandchildProduct) {
+      // Go back from grandchild to child modal
+      setSelectedGrandchildProduct(null);
+      setShowGrandchildModal(true);
+    } else if (selectedChildProduct) {
+      // Go back from child to parent modal
       setSelectedChildProduct(null);
       setShowChildModal(true);
     } else {
+      // Go back to root product modal
       setSelectedProduct(null);
       setShowProductModal(true);
     }
@@ -888,7 +922,7 @@ export default function Home() {
       setAccessToken(access_token);
 
       // Get the effective product ID (child if selected, otherwise parent)
-      const effectiveProductId = selectedChildProduct || selectedProduct;
+      const effectiveProductId = selectedGrandchildProduct || selectedChildProduct || selectedProduct;
       const productConfig = getProductConfigById(effectiveProductId!);
 
       // Skip accounts/get for Signal Balance
@@ -982,7 +1016,7 @@ export default function Home() {
         metadata
       });
       // Show webhook panel only for products that require webhooks (CRA products)
-      const effectiveProductId = selectedChildProduct || selectedProduct;
+      const effectiveProductId = selectedGrandchildProduct || selectedChildProduct || selectedProduct;
       const productConfig = getProductConfigById(effectiveProductId!);
       if (productConfig?.requiresWebhook) {
         setShowWebhookPanel(true);
@@ -1005,7 +1039,7 @@ export default function Home() {
     setShowWebhookPanel(false);
 
     // Get the effective product ID to check product type
-    const effectiveProductId = selectedChildProduct || selectedProduct;
+    const effectiveProductId = selectedGrandchildProduct || selectedChildProduct || selectedProduct;
     const productConfig = getProductConfigById(effectiveProductId!);
     
     // Check if this is a CRA product
@@ -1199,7 +1233,7 @@ export default function Home() {
 
     try {
       // Get the effective product ID (child if selected, otherwise parent)
-      const effectiveProductId = selectedChildProduct || selectedProduct;
+      const effectiveProductId = selectedGrandchildProduct || selectedChildProduct || selectedProduct;
       const productConfig = getProductConfigById(effectiveProductId!);
       
       if (!productConfig || !productConfig.apiEndpoint) {
@@ -1259,6 +1293,7 @@ export default function Home() {
     setAccountsData(null);
     setSelectedProduct(null);
     setSelectedChildProduct(null);
+    setSelectedGrandchildProduct(null);
     
     // Hide success modal and show product selector
     setShowModal(false);
@@ -1370,7 +1405,7 @@ export default function Home() {
     });
     // Show webhook panel only for products that require webhooks (CRA products), except in Zap mode
     if (!zapMode) {
-      const effectiveProductId = selectedChildProduct || selectedProduct;
+      const effectiveProductId = selectedGrandchildProduct || selectedChildProduct || selectedProduct;
       const productConfig = getProductConfigById(effectiveProductId!);
       if (productConfig?.requiresWebhook) {
         setShowWebhookPanel(true);
@@ -1413,6 +1448,7 @@ export default function Home() {
     setLinkToken(null);
     setSelectedProduct(null);
     setSelectedChildProduct(null);
+    setSelectedGrandchildProduct(null);
     setLinkEvents([]);
     setShowProductModal(true);
 
@@ -1539,8 +1575,8 @@ export default function Home() {
   useEffect(() => {
     // In Demo Mode, we can open Link without a selected product
     // In normal mode, we need a selected product
-    const shouldOpenLink = ready && linkToken && !showModal && !showChildModal && !showProductModal && !showZapResetButton && !embeddedLinkActive &&
-      (demoMode || selectedProduct || selectedChildProduct);
+    const shouldOpenLink = ready && linkToken && !showModal && !showChildModal && !showGrandchildModal && !showProductModal && !showZapResetButton && !embeddedLinkActive &&
+      (demoMode || selectedProduct || selectedChildProduct || selectedGrandchildProduct);
     
     if (shouldOpenLink) {
       // Clear previous events and show event logs (unless in Zap Mode)
@@ -1558,7 +1594,7 @@ export default function Home() {
         open();
       }
     }
-  }, [ready, linkToken, selectedProduct, selectedChildProduct, showModal, showChildModal, showProductModal, showZapResetButton, zapMode, demoMode, embeddedMode, embeddedLinkActive, open, openEmbeddedLink]);
+  }, [ready, linkToken, selectedProduct, selectedChildProduct, selectedGrandchildProduct, showModal, showChildModal, showGrandchildModal, showProductModal, showZapResetButton, zapMode, demoMode, embeddedMode, embeddedLinkActive, open, openEmbeddedLink]);
 
   const handleButtonClick = () => {
     // Show product selection modal instead of opening Link directly
@@ -1625,6 +1661,7 @@ export default function Home() {
     // Hide product selector modals first
     setShowProductModal(false);
     setShowChildModal(false);
+    setShowGrandchildModal(false);
     
     // Clean up Plaid item if access token exists
     if (accessToken || demoAccessToken) {
@@ -1654,6 +1691,7 @@ export default function Home() {
     setAccessToken(null);
     setSelectedProduct(null);
     setSelectedChildProduct(null);
+    setSelectedGrandchildProduct(null);
     setLinkToken(null);
     setLinkEvents([]);
     setShowEventLogs(false);
@@ -1722,6 +1760,7 @@ export default function Home() {
     setAccessToken(null);
     setSelectedProduct(null);
     setSelectedChildProduct(null);
+    setSelectedGrandchildProduct(null);
     setLinkToken(null);
     setLinkEvents([]);
     setShowEventLogs(false);
@@ -1783,7 +1822,7 @@ export default function Home() {
   const renderModalContent = () => {
     // CRA: User Create Preview Modal
     if (modalState === 'preview-user-create' && userCreateConfig) {
-      const effectiveProductId = selectedChildProduct || selectedProduct;
+      const effectiveProductId = selectedGrandchildProduct || selectedChildProduct || selectedProduct;
       const productConfig = getProductConfigById(effectiveProductId!);
       const isCRA = productConfig?.isCRA;
       
@@ -1858,7 +1897,7 @@ export default function Home() {
 
     if (modalState === 'preview-config' && linkTokenConfig) {
       // Check if this is a CRA product to modify the back button behavior
-      const effectiveProductId = selectedChildProduct || selectedProduct;
+      const effectiveProductId = selectedGrandchildProduct || selectedChildProduct || selectedProduct;
       const productConfig = getProductConfigById(effectiveProductId!);
       const isCRA = productConfig?.isCRA;
       
@@ -1979,7 +2018,7 @@ export default function Home() {
     }
 
     if (modalState === 'accounts-data' && accountsData) {
-      const effectiveProductId = selectedChildProduct || selectedProduct;
+      const effectiveProductId = selectedGrandchildProduct || selectedChildProduct || selectedProduct;
       const productConfig = getProductConfigById(effectiveProductId!);
       const productName = productConfig?.name || 'Product';
       
@@ -2022,7 +2061,7 @@ export default function Home() {
     }
 
     if (modalState === 'processing-product') {
-      const effectiveProductId = selectedChildProduct || selectedProduct;
+      const effectiveProductId = selectedGrandchildProduct || selectedChildProduct || selectedProduct;
       const productConfig = getProductConfigById(effectiveProductId!);
       const productName = productConfig?.name || 'Product';
       
@@ -2075,7 +2114,7 @@ export default function Home() {
     }
 
     if (modalState === 'success' && productData) {
-      const effectiveProductId = selectedChildProduct || selectedProduct;
+      const effectiveProductId = selectedGrandchildProduct || selectedChildProduct || selectedProduct;
       const productConfig = getProductConfigById(effectiveProductId!);
       const apiTitle = productConfig?.apiTitle || 'API Response';
       const isCRA = productConfig?.isCRA;
@@ -2173,6 +2212,30 @@ export default function Home() {
             onResetClick={demoLinkCompleted ? handleStartOver : undefined}
           />
         )}
+      </Modal>
+      <Modal isVisible={showGrandchildModal}>
+        {selectedProduct && selectedChildProduct && (() => {
+          const parentConfig = PRODUCT_CONFIGS[selectedProduct];
+          const childConfig = parentConfig?.children?.find(c => c.id === selectedChildProduct);
+          return childConfig?.children && (
+            <ProductSelector 
+              products={demoLinkCompleted 
+                ? childConfig.children.filter(gc => demoProductsVisibility[gc.id])
+                : childConfig.children} 
+              onSelect={handleGrandchildProductSelect}
+              onBack={() => {
+                setShowGrandchildModal(false);
+                setSelectedGrandchildProduct(null);
+                setShowChildModal(true);
+              }}
+              showBackButton={true}
+              onSettingsClick={demoLinkCompleted ? undefined : handleOpenSettings}
+              hasCustomSettings={hasCustomSettings}
+              title={childConfig.name}
+              onResetClick={demoLinkCompleted ? handleStartOver : undefined}
+            />
+          );
+        })()}
       </Modal>
       <Modal isVisible={showSettingsModal}>
         <div className="settings-modal">
@@ -2393,7 +2456,7 @@ export default function Home() {
                 <div className="success-icon">✓</div>
                 <h2>
                   {(() => {
-                        const effectiveProductId = selectedChildProduct || selectedProduct;
+                        const effectiveProductId = selectedGrandchildProduct || selectedChildProduct || selectedProduct;
                         const productConfig = getProductConfigById(effectiveProductId!);
                         return productConfig?.apiTitle || productConfig?.name || 'Product API';
                       })()} Response
@@ -2408,7 +2471,7 @@ export default function Home() {
                 <JsonHighlight 
                   data={productData} 
                   highlightKeys={(() => {
-                    const effectiveProductId = selectedChildProduct || selectedProduct;
+                    const effectiveProductId = selectedGrandchildProduct || selectedChildProduct || selectedProduct;
                     const productConfig = getProductConfigById(effectiveProductId!);
                     return productConfig?.highlightKeys;
                   })()}
