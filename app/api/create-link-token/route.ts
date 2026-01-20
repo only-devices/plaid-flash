@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { products, required_if_supported_products, user_id, user_token, user, webhook, ...otherParams } = body;
+    const { products, required_if_supported_products, user_id, user_token, user, ...otherParams } = body;
 
     // Default to auth if no products specified
     const productsArray = products || ['auth'];
@@ -30,11 +30,6 @@ export async function POST(request: NextRequest) {
     }
     if (user_token) {
       linkTokenConfig.user_token = user_token;
-    }
-
-    // Add webhook URL if provided
-    if (webhook) {
-      linkTokenConfig.webhook = webhook;
     }
 
     // Merge any other additional params (including transactions if provided)

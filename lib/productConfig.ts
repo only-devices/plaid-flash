@@ -1,3 +1,22 @@
+// Helper function to generate date range (end_date = today, start_date = today - 30 days)
+const getDateRange = () => {
+  const endDate = new Date();
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - 30);
+  
+  const formatDate = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  
+  return {
+    start_date: formatDate(startDate),
+    end_date: formatDate(endDate)
+  };
+};
+
 export interface ProductConfig {
   id: string;
   name: string;
@@ -21,7 +40,7 @@ export const PRODUCT_CONFIGS: Record<string, ProductConfig> = {
     id: 'payments',
     name: 'Payments and Funding',
     shortName: 'Payments',
-    products: ['auth', 'signal', 'identity'],
+    products: [],
     required_if_supported: [],
     gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
     icon: '/icons/payments.png',
@@ -36,17 +55,6 @@ export const PRODUCT_CONFIGS: Record<string, ProductConfig> = {
         apiTitle: '/auth/get',
         highlightKeys: ['numbers'],
         icon: '/icons/auth.png'
-      },
-      {
-        id: 'investments-move',
-        name: 'Investments Move',
-        products: ['investments_auth'],
-        required_if_supported: [],
-        gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
-        apiEndpoint: '/api/investments-auth-get',
-        apiTitle: '/investments/auth/get',
-        highlightKeys: ['numbers'],
-        icon: '/icons/investments-move.png'
       },
       {
         id: 'signal',
@@ -132,98 +140,128 @@ export const PRODUCT_CONFIGS: Record<string, ProductConfig> = {
             highlightKeys: ['legal_name', 'phone_number', 'email_address', 'address']
           }
         ]
-      }
-    ]
-  },
-  transactions: {
-    id: 'transactions',
-    name: 'Transactions',
-    products: ['transactions'],
-    required_if_supported: [],
-    gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
-    icon: '/icons/transactions.png',
-    children: [
-      {
-        id: 'transactions-get',
-        name: 'Transactions Get',
-        shortName: 'Get',
-        products: ['transactions'],
-        required_if_supported: [],
-        gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
-        icon: '/icons/transactions.png',
-        apiEndpoint: '/api/transactions-get',
-        apiTitle: '/transactions/get',
-        additionalApiParams: {
-          start_date: '2025-01-01',
-          end_date: '2025-05-31'
-        }
       },
       {
-        id: 'transactions-sync',
-        name: 'Transactions Sync',
-        shortName: 'Sync',
-        products: ['transactions'],
+        id: 'investments-move',
+        name: 'Investments Move',
+        products: ['investments_auth'],
         required_if_supported: [],
         gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
-        icon: '/icons/transactions.png',
-        apiEndpoint: '/api/transactions-sync',
-        apiTitle: '/transactions/sync',
+        apiEndpoint: '/api/investments-auth-get',
+        apiTitle: '/investments/auth/get',
+        highlightKeys: ['numbers'],
+        icon: '/icons/investments-move.png',
         additionalLinkParams: {
-          transactions: {
-            days_requested: 14
+          investments_auth: {
+            masked_number_match_enabled: true,
+            stated_account_number_enabled: true,
+            manual_entry_enabled: true
           }
         },
-        highlightKeys: ['added', 'has_more', 'modified', 'next_cursor', 'removed', 'transactions_update_status']
-      }
-    ]
-  },
-  investments: {
-    id: 'investments',
-    name: 'Investments',
-    products: ['investments'],
-    required_if_supported: [],
-    gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
-    icon: '/icons/investments.png',
-    children: [
-      {
-        id: 'investments-holdings',
-        name: 'Investments Holdings',
-        shortName: 'Holdings',
-        products: ['investments'],
-        required_if_supported: [],
-        gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
-        icon: '/icons/investments.png',
-        apiEndpoint: '/api/investments-holdings-get',
-        apiTitle: '/investments/holdings/get',
-        highlightKeys: ['holdings']
-      },
-      {
-        id: 'investments-transactions',
-        name: 'Investments Transactions',
-        shortName: 'Transactions',
-        products: ['investments'],
-        required_if_supported: [],
-        gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
-        icon: '/icons/investments.png',
-        apiEndpoint: '/api/investments-transactions-get',
-        apiTitle: '/investments/transactions/get',
         additionalApiParams: {
-          start_date: '2025-01-01',
-          end_date: '2025-05-31'
+          investments_auth: {
+            masked_number_match_enabled: true,
+            stated_account_number_enabled: true,
+            manual_entry_enabled: true
+          }
         }
       }
     ]
   },
-  liabilities: {
-    id: 'liabilities',
-    name: 'Liabilities',
-    products: ['liabilities'],
+  personal_finance_insights: {
+    id: 'personal_finance_insights',
+    name: 'Personal Finance Insights',
+    shortName: 'Personal Finance',
+    products: [],
     required_if_supported: [],
     gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
-    apiEndpoint: '/api/liabilities-get',
-    apiTitle: '/liabilities/get',
-    highlightKeys: ['liabilities'],
-    icon: '/icons/liabilities.png'
+    icon: '/icons/accounts-open.png',
+    children: [
+      {
+        id: 'transactions',
+        name: 'Transactions',
+        products: ['transactions'],
+        required_if_supported: [],
+        gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
+        icon: '/icons/transactions.png',
+        children: [
+          {
+            id: 'transactions-get',
+            name: 'Transactions Get',
+            shortName: 'Get',
+            products: ['transactions'],
+            required_if_supported: [],
+            gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
+            icon: '/icons/transactions.png',
+            apiEndpoint: '/api/transactions-get',
+            apiTitle: '/transactions/get',
+            additionalApiParams: getDateRange()
+          },
+          {
+            id: 'transactions-sync',
+            name: 'Transactions Sync',
+            shortName: 'Sync',
+            products: ['transactions'],
+            required_if_supported: [],
+            gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
+            icon: '/icons/transactions.png',
+            apiEndpoint: '/api/transactions-sync',
+            apiTitle: '/transactions/sync',
+            additionalLinkParams: {
+              transactions: {
+                days_requested: 14
+              }
+            },
+            highlightKeys: ['added', 'has_more', 'modified', 'next_cursor', 'removed', 'transactions_update_status']
+          }
+        ],
+      },
+      {
+        id: 'investments',
+        name: 'Investments',
+        products: ['investments'],
+        required_if_supported: [],
+        gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
+        icon: '/icons/investments.png',
+        children: [
+          {
+            id: 'investments-holdings',
+            name: 'Investments Holdings',
+            shortName: 'Holdings',
+            products: ['investments'],
+            required_if_supported: [],
+            gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
+            icon: '/icons/investments.png',
+            apiEndpoint: '/api/investments-holdings-get',
+            apiTitle: '/investments/holdings/get',
+            highlightKeys: ['holdings']
+          },
+          {
+            id: 'investments-transactions',
+            name: 'Investments Transactions',
+            shortName: 'Transactions',
+            products: ['investments'],
+            required_if_supported: [],
+            gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
+            icon: '/icons/investments.png',
+            apiEndpoint: '/api/investments-transactions-get',
+            apiTitle: '/investments/transactions/get',
+            additionalApiParams: getDateRange()
+          }
+        ]
+      },
+      {
+        id: 'liabilities',
+        name: 'Liabilities',
+        products: ['liabilities'],
+        required_if_supported: [],
+        gradient: 'linear-gradient(135deg, #4a5fc1 0%, #5a3d7a 100%)',
+        apiEndpoint: '/api/liabilities-get',
+        apiTitle: '/liabilities/get',
+        highlightKeys: ['liabilities'],
+        icon: '/icons/liabilities.png'
+      },
+    ]
   },
   cra: {
     id: 'cra',
@@ -255,7 +293,7 @@ export const PRODUCT_CONFIGS: Record<string, ProductConfig> = {
         id: 'cra-income-insights',
         name: 'Income Insights',
         shortName: 'Income',
-        products: ['cra_base_report','cra_income_insights'],
+        products: ['cra_base_report', 'cra_income_insights'],
         required_if_supported: [],
         gradient: 'linear-gradient(135deg, #2d9b83 0%, #1a6b5c 100%)',
         icon: '/icons/cra.png',
@@ -272,7 +310,7 @@ export const PRODUCT_CONFIGS: Record<string, ProductConfig> = {
         id: 'cra-partner-insights',
         name: 'Partner Insights',
         shortName: 'Partner',
-        products: ['cra_base_report','cra_partner_insights'],
+        products: ['cra_base_report', 'cra_partner_insights'],
         required_if_supported: [],
         gradient: 'linear-gradient(135deg, #2d9b83 0%, #1a6b5c 100%)',
         icon: '/icons/cra.png',
@@ -289,7 +327,7 @@ export const PRODUCT_CONFIGS: Record<string, ProductConfig> = {
         id: 'cra-cashflow-insights',
         name: 'Cashflow Insights',
         shortName: 'Cashflow',
-        products: ['cra_base_report','cra_cashflow_insights'],
+        products: ['cra_base_report', 'cra_cashflow_insights'],
         required_if_supported: [],
         gradient: 'linear-gradient(135deg, #2d9b83 0%, #1a6b5c 100%)',
         icon: '/icons/cra.png',
